@@ -76,12 +76,19 @@ The author and the project **accept no responsibility whatsoever** for cleaning 
 
 ## How it will work / Cómo funcionará
 
-| Phase | What | Host |
-| --- | --- | --- |
-| **MVP (now)** | Drag-drop → R2 original → job → watermarks-remover `/clean` → R2 cleaned → download | Workers + R2 `focairemover-files` + D1 `focairemover-jobs` on **enterprise** |
-| **Containers** | Same `/clean` inside Cloudflare Containers (port 8765) | Uncomment wrangler containers; see DEPLOY.md |
-| **Later** | Layer B rewrite (non-Claude); larger files | Optional Workers AI / OpenAI-compatible |
-| **Out of scope** | Pixel SynthID / CtrlRegen (GPU); official Anthropic detector; guaranteed undetectability | — |
+| Phase | What | Host | State |
+| --- | --- | --- | --- |
+| **Upload + jobs** | Drag-drop → R2 original → queued job → R2 cleaned → download | Workers + R2 `focairemover-files` + D1 `focairemover-jobs` on **enterprise** | done |
+| **Job transport** | Cloudflare Queues, 3 retries, dead-letter `focairemover-clean-dlq` | `focairemover-clean` | done |
+| **`.txt` cleaning** | Layer A in the Worker, no container and no model | `apps/worker/src/layer-a/` | done |
+| **Bot protection** | Turnstile in front of anonymous uploads | Worker + widget | code done, **widget not created** |
+| **Other formats** | `/clean` inside Cloudflare Containers (port 8765) | `containers/cleaner/` | class written, **not deployed** (needs Docker) |
+| **Later** | Layer B rewrite (non-Claude); larger files | Optional Workers AI / OpenAI-compatible | not started |
+| **Out of scope** | Pixel SynthID / CtrlRegen (GPU); official Anthropic detector; guaranteed undetectability | — | — |
+
+**Nothing is deployed yet.** Until the Containers step ships, a deployed Worker
+cleans `.txt` and fails every other format with `cleaner_not_configured`, unless
+`CLEANER_URL` points at a cleaner reachable from Cloudflare.
 
 ## Repository layout / Estructura
 

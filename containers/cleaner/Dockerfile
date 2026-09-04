@@ -32,7 +32,13 @@
 # Cloudflare disk is already ephemeral; still set a decoded-file cap below
 # so JSON+base64 proxied through a Worker stays under the 128 MiB isolate.
 
-FROM ghcr.io/guillaumemeyer/watermarks-remover:latest
+# Pinned, not :latest. Upstream's /clean contract does change between releases:
+# v0.7.0 is the version that made a Layer B rewrite mandatory for the `text`
+# kind. A moving tag would silently alter what this service does to user files.
+# Verified 2026-09-04: v0.7.0 and latest are the same digest
+# (sha256:d0ca21aa12856...), and the image publishes linux/amd64, which
+# Cloudflare Containers requires.
+FROM ghcr.io/guillaumemeyer/watermarks-remover:v0.7.0
 
 # 8 MiB decoded file, matching MAX_UPLOAD_BYTES in wrangler.jsonc. The Worker
 # proxies base64-in-JSON, so N bytes cost ~3.7N of isolate memory against the

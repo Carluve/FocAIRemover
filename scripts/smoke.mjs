@@ -2,8 +2,9 @@
 /**
  * Smoke against a running `npx wrangler dev` (default http://127.0.0.1:8787).
  * Requires D1 migrations applied locally (`npm run migrate:local`).
- * Cleaning will error until CLEANER_URL or Containers are up — upload+job
- * records in R2/D1 must still succeed.
+ * Uses a .txt, which the Worker cleans itself with Layer A, so this passes with
+ * no cleaner running at all. For the container-backed formats (.md, .html,
+ * images, PDF) use `npm run e2e` with a cleaner up.
  */
 const BASE = process.env.SMOKE_BASE || "http://127.0.0.1:8787";
 
@@ -35,7 +36,7 @@ async function main() {
         health: healthJson.service,
         jobId: upJson.id,
         status: stJson.status,
-        note: "cleaned download requires the cleaner; R2 original should exist regardless",
+        note: ".txt is cleaned in-Worker by Layer A; other formats need the cleaner",
       },
       null,
       2,
