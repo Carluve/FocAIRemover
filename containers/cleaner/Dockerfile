@@ -34,9 +34,12 @@
 
 FROM ghcr.io/guillaumemeyer/watermarks-remover:latest
 
-# 16 MiB decoded file. JSON envelope is ~1.5× that (base64). Worker memory is
-# 128 MiB — do not raise this until v1.5 streams via R2.
-ENV WATERMARKS_MAX_INPUT_BYTES=33554432 \
+# 8 MiB decoded file, matching MAX_UPLOAD_BYTES in wrangler.jsonc. The Worker
+# proxies base64-in-JSON, so N bytes cost ~3.7N of isolate memory against the
+# 128 MiB limit; the cap on both sides must agree. (This previously said 16 MiB
+# in the comment while setting 32 MiB, and the Worker allowed 32 MiB.)
+# Do not raise it until the cleaner contract streams via R2.
+ENV WATERMARKS_MAX_INPUT_BYTES=8388608 \
     WATERMARKS_MAX_BATCH_FILES=8 \
     PYTHONUNBUFFERED=1
 

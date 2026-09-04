@@ -9,6 +9,6 @@ interface Env {
   CLEANER?: DurableObjectNamespace;
   // PUBLIC_UPLOADS is a wrangler.jsonc var, so `wrangler types` generates it
   // as a string literal ("true" / "false"). Declaring it here too would clash.
-  /** Bound once the `queues` block in wrangler.jsonc is enabled. */
-  CLEAN_QUEUE?: Queue<{ jobId: string }>;
+  // CLEAN_QUEUE now comes from `wrangler types` (the queues block is enabled),
+  // so declaring it here too would clash.
 }

@@ -80,27 +80,26 @@
     },
   ],
 
-  // Durable job processing. Without this block the Worker falls back to
+  // Durable job processing. Without this the Worker falls back to
   // ctx.waitUntil(), which dies with the isolate and strands jobs in
-  // `processing`. Enable with two commands, then uncomment:
-  //
+  // `processing`. Both queues exist on the enterprise account (created
+  // 2026-09-04); recreate with:
   //   npx wrangler queues create focairemover-clean-dlq
   //   npx wrangler queues create focairemover-clean
-  //
-  // "queues": {
-  //   "producers": [
-  //     { "binding": "CLEAN_QUEUE", "queue": "focairemover-clean" }
-  //   ],
-  //   "consumers": [
-  //     {
-  //       "queue": "focairemover-clean",
-  //       "max_batch_size": 1,
-  //       "max_batch_timeout": 5,
-  //       "max_retries": 3,
-  //       "dead_letter_queue": "focairemover-clean-dlq"
-  //     }
-  //   ]
-  // },
+  "queues": {
+    "producers": [{ "binding": "CLEAN_QUEUE", "queue": "focairemover-clean" }],
+    "consumers": [
+      {
+        // One job per invocation: each clean is a whole file through the
+        // container, not a cheap record to batch up.
+        "queue": "focairemover-clean",
+        "max_batch_size": 1,
+        "max_batch_timeout": 5,
+        "max_retries": 3,
+        "dead_letter_queue": "focairemover-clean-dlq",
+      },
+    ],
+  },
 
   // Cloudflare Containers: wrangler deploy builds containers/cleaner/Dockerfile
   // (FROM ghcr.io/guillaumemeyer/watermarks-remover) and pushes to the

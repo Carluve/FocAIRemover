@@ -16,10 +16,21 @@ export function testEnv(overrides: Record<string, unknown> = {}): Env {
     CLEANER_URL: undefined,
     CLEANER: undefined,
     CLEANER_OPTIONS: "",
+    // vitest.config.ts binds a real local queue. Most tests want the inline
+    // waitUntil path, so opt in explicitly via realQueueEnv().
+    CLEAN_QUEUE: undefined,
     // Deterministic by default. Tests that care about throttling pass their own.
     RATE_LIMITER: allowAllLimiter(),
     ...overrides,
   } as unknown as Env;
+}
+
+/**
+ * Env keeping the REAL queue binding from vitest.config.ts, so a job travels
+ * producer -> Queues -> consumer for real instead of through a test double.
+ */
+export function realQueueEnv(overrides: Record<string, unknown> = {}): Env {
+  return testEnv({ CLEAN_QUEUE: (env as unknown as Env).CLEAN_QUEUE, ...overrides });
 }
 
 export function allowAllLimiter(): RateLimit {

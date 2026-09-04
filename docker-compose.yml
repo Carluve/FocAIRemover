@@ -13,7 +13,8 @@ services:
     ports:
       - "127.0.0.1:8765:8765"
     environment:
-      WATERMARKS_MAX_INPUT_BYTES: "33554432"
+      # Keep in step with MAX_UPLOAD_BYTES (wrangler.jsonc) and the Dockerfile.
+      WATERMARKS_MAX_INPUT_BYTES: "8388608"
       WATERMARKS_MAX_BATCH_FILES: "8"
     read_only: true
     tmpfs:

@@ -26,5 +26,8 @@
     "typescript": "^7.0.2",
     "vitest": "^4.1.11",
     "wrangler": "^4"
+  },
+  "dependencies": {
+    "@cloudflare/containers": "^0.3.7"
   }
 }

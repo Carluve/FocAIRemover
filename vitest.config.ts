@@ -16,6 +16,14 @@ export default defineConfig({
         // Handed to applyD1Migrations() in tests/setup.ts. workerd cannot read
         // the migrations directory itself, so Node passes it in as a binding.
         bindings: { TEST_MIGRATIONS: migrations },
+        // A real local queue, so producer -> Queues -> consumer is exercised
+        // rather than mocked. The wrangler.jsonc block stays commented until
+        // the queues exist on the account; this binds them for tests only.
+        // testEnv() clears CLEAN_QUEUE by default so only the queue tests see it.
+        queueProducers: { CLEAN_QUEUE: "focairemover-clean" },
+        queueConsumers: {
+          "focairemover-clean": { maxBatchSize: 1, maxBatchTimeout: 0, maxRetries: 3 },
+        },
       },
     }),
   ],

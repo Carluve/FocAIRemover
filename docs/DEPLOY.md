@@ -120,12 +120,21 @@ posture from Layer A, and [DISCLAIMER.md](DISCLAIMER.md) plus the data table in
 [../README.md](../README.md) must stay accurate if you enable it. Layer B
 weakens statistical watermarks at best — never claim removal.
 
-## 4b. Queues (durable job processing) — strongly recommended
+## 4b. Queues (durable job processing) — done
 
-Unbound, the Worker cleans inside `ctx.waitUntil()`. That budget dies with the
-isolate: a job can be stranded in `processing` with nothing to re-drive it
-except the UI's retry button. Queues gives it durable retries and a
-dead-letter queue.
+Both queues exist on the enterprise account and the `queues` block in
+`wrangler.jsonc` is **enabled**, so no action is needed:
+
+| Queue | Role |
+| --- | --- |
+| `focairemover-clean` | producer + consumer, `max_batch_size: 1`, `max_retries: 3` |
+| `focairemover-clean-dlq` | dead letter after 3 failed attempts |
+
+Unbound, the Worker falls back to `ctx.waitUntil()`, whose budget dies with the
+isolate and can strand a job in `processing`. `GET /api/health` reports `queue`
+as `queue` or `waitUntil`, so you can tell which path a deployment is on.
+
+To recreate them from scratch:
 
 ```bash
 export CLOUDFLARE_ACCOUNT_ID=39f8ea10b94ad38470fc3c20c260efdc
@@ -133,10 +142,8 @@ npx wrangler queues create focairemover-clean-dlq
 npx wrangler queues create focairemover-clean
 ```
 
-Then uncomment the `queues` block in `wrangler.jsonc` and redeploy. The Worker
-code already handles both paths; `GET /api/health` reports `queue` as `queue`
-or `waitUntil`. Create the queues **before** uncommenting, or `wrangler deploy`
-will fail on the missing queue.
+`tests/queue-real.test.ts` exercises producer → Queues → consumer against a real
+local queue, so the wiring is checked without deploying.
 
 ## 5. Deploy the Worker
 
