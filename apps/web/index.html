@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FocAIRemover — investigación</title>
+    <meta
+      name="description"
+      content="Proyecto de investigación. Limpieza verificable de Unicode invisible y metadatos C2PA/EXIF/XMP. Los ficheros se guardan en R2. No garantiza la eliminación de marcas de Anthropic."
+    />
+    <link rel="stylesheet" href="./app.css" />
+  </head>
+  <body>
+    <main>
+      <p class="status">investigación / experimental · R2-backed · no es un producto</p>
+      <h1>FocAIRemover</h1>
+      <p>
+        Sube un fichero. Se guarda en R2 (original + resultado). El Worker llama a
+        watermarks-remover <code>/clean</code>. <strong>No</strong> es un servicio
+        garantizado.
+      </p>
+      <p class="en">
+        Research / experimental. Every file is stored in R2. No guaranteed watermark
+        removal. AS IS, no liability.
+      </p>
+
+      <div class="caveat">
+        <p><strong>Datos</strong></p>
+        <p>
+          Originales, salidas e informes <strong>pueden persistirse</strong> en el
+          bucket R2 <code>focairemover-files</code> (cuenta Cloudflare enterprise)
+          con fines de investigación u operación. No hay promesa de borrado.
+        </p>
+        <p><strong>Descargo</strong></p>
+        <p>
+          El autor <strong>no se hace responsable de nada</strong>: limpiado,
+          watermarks que sigan detectables, tu uso, daños, pérdidas, sanciones
+          académicas o legales, fallos. Software «tal cual» / AS IS.
+          <code>docs/DISCLAIMER.md</code>.
+          <strong>Nunca «Anthropic watermark guaranteed removed».</strong>
+        </p>
+      </div>
+
+      <p id="health-line" class="health">Comprobando API…</p>
+      <form id="upload-form">
+        <label id="drop" class="drop">
+          <input
+            id="file"
+            type="file"
+            name="file"
+            hidden
+            accept=".txt,.md,.html,.htm,.pdf,.png,.jpg,.jpeg,.webp,.svg,.docx,.xlsx,.pptx"
+          />
+          <span id="drop-label">Arrastra un fichero o haz clic para elegir (máx. 32 MiB)</span>
+        </label>
+        <button type="submit" id="submit" disabled>Subir y limpiar</button>
+      </form>
+
+      <section id="job" hidden>
+        <h2>Trabajo</h2>
+        <p id="job-status"></p>
+        <pre id="job-json"></pre>
+        <p id="job-actions"></p>
+      </section>
+
+      <div class="caveat">
+        <p><strong>Lo verificable</strong> — Capa A (Unicode invisible) y strip de metadatos C2PA/EXIF/XMP.</p>
+        <p><strong>No certificable</strong> — marcas estadísticas de texto (Claude/Anthropic, Kirchenbauer, SynthID-Text). Solo se debilitan con Capa B (mejor esfuerzo).</p>
+      </div>
+    </main>
+    <footer>
+      Derivado de watermarks-remover (MIT). No afiliado a Anthropic ni a unmark-web.
+      <script type="module" src="./app.js"></script>
+    </footer>
+  </body>
+</html>

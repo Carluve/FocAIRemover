@@ -1,0 +1,81 @@
+// FocAIRemover — Workers config.
+// Cloudflare account: carluve @enterprise (NOT personal).
+// Enterprise: 39f8ea10b94ad38470fc3c20c260efdc
+// Do not use personal: 052a5feff6731a169b7012425b020cc5
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "focairemover",
+  "main": "apps/worker/src/index.ts",
+  "account_id": "39f8ea10b94ad38470fc3c20c260efdc",
+  "compatibility_date": "2026-09-04",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "preview_urls": true,
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+  },
+  "assets": {
+    "directory": "./apps/web",
+    "binding": "ASSETS",
+    "run_worker_first": true,
+  },
+  "vars": {
+    "ENVIRONMENT": "production",
+    // Public origin allowlist for CORS. Same-origin (this Worker) is always allowed.
+    // Never "*". Override locally in .dev.vars if needed.
+    "ALLOWED_ORIGIN": "https://focairemover.carluve.workers.dev",
+    "MAX_UPLOAD_BYTES": "33554432",
+    // Must stay under the 30s ctx.waitUntil() budget after POST /api/upload returns.
+    "CLEANER_TIMEOUT_MS": "20000",
+  },
+  "r2_buckets": [
+    {
+      "binding": "FOCAI_FILES",
+      "bucket_name": "focairemover-files",
+    },
+  ],
+  "d1_databases": [
+    {
+      "binding": "JOBS",
+      "database_name": "focairemover-jobs",
+      "database_id": "d7d7154b-3a79-4bee-ae2f-c0f74e6b69aa",
+      "migrations_dir": "migrations",
+    },
+  ],
+  "ratelimits": [
+    {
+      "name": "RATE_LIMITER",
+      // Unique per this app on the enterprise account. Do not reuse 1001.
+      "namespace_id": "904201",
+      "simple": {
+        "limit": 30,
+        "period": 60,
+      },
+    },
+  ],
+
+  // Cloudflare Containers: wrangler deploy builds containers/cleaner/Dockerfile
+  // (FROM ghcr.io/guillaumemeyer/watermarks-remover) and pushes to the
+  // enterprise Cloudflare registry. Requires Docker locally for that deploy.
+  // Local `wrangler dev` without Docker: set CLEANER_URL in .dev.vars
+  // (docker compose up -f docker-compose.yml).
+  //
+  // Uncomment to attach the container on deploy:
+  // "containers": [
+  //   {
+  //     "class_name": "CleanerContainer",
+  //     "image": "./containers/cleaner/Dockerfile",
+  //     "max_instances": 3,
+  //     "instance_type": "basic"
+  //   }
+  // ],
+  // "durable_objects": {
+  //   "bindings": [
+  //     { "name": "CLEANER", "class_name": "CleanerContainer" }
+  //   ]
+  // },
+  // "migrations": [
+  //   { "tag": "v1", "new_sqlite_classes": ["CleanerContainer"] }
+  // ]
+}

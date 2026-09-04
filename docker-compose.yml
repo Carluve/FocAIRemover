@@ -1,0 +1,21 @@
+# Local watermarks-remover for Worker CLEANER_URL.
+# Usage: docker compose up --build
+# Then: CLEANER_URL=http://127.0.0.1:8765 npx wrangler dev
+#
+# Cloudflare production uses Containers on the enterprise account
+# (39f8ea10b94ad38470fc3c20c260efdc), not this compose file.
+
+services:
+  cleaner:
+    build:
+      context: ./containers/cleaner
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:8765:8765"
+    environment:
+      WATERMARKS_MAX_INPUT_BYTES: "33554432"
+      WATERMARKS_MAX_BATCH_FILES: "8"
+    read_only: true
+    tmpfs:
+      - /tmp
+    restart: unless-stopped

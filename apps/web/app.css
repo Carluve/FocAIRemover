@@ -1,0 +1,85 @@
+:root {
+  color-scheme: light dark;
+  --bg: #f4f1ea;
+  --fg: #1f1c18;
+  --muted: #5c564c;
+  --card: #fffdf8;
+  --accent: #3d6b5a;
+  --warn: #8a5a28;
+  --border: #d9d1c3;
+  --danger: #8b2e2e;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1c1a17;
+    --fg: #f0ebe3;
+    --muted: #b4aa9c;
+    --card: #26231f;
+    --accent: #8fbfa8;
+    --warn: #e0b07a;
+    --border: #3d3832;
+    --danger: #e08a8a;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  font: 16px/1.5 system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+}
+main { max-width: 44rem; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+h1 { font-size: 1.75rem; letter-spacing: -0.02em; }
+.status {
+  display: inline-block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.15rem 0.7rem;
+}
+.en { color: var(--muted); font-size: 0.95rem; }
+.drop {
+  display: block;
+  margin: 1.25rem 0 0.75rem;
+  padding: 2.4rem 1rem;
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  text-align: center;
+  color: var(--muted);
+  cursor: pointer;
+}
+.drop.drag { border-color: var(--accent); color: var(--fg); }
+.caveat {
+  border-left: 4px solid var(--warn);
+  padding: 0.75rem 1rem;
+  background: var(--card);
+  border-radius: 0 8px 8px 0;
+  margin: 1.25rem 0;
+}
+button {
+  font: inherit;
+  background: var(--accent);
+  color: #fff;
+  border: 0;
+  border-radius: 8px;
+  padding: 0.55rem 1rem;
+  cursor: pointer;
+}
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+pre {
+  overflow: auto;
+  background: var(--card);
+  border: 1px solid var(--border);
+  padding: 0.75rem;
+  font-size: 0.8rem;
+}
+a { color: var(--accent); }
+footer { margin-top: 2.5rem; font-size: 0.85rem; color: var(--muted); }
+.error { color: var(--danger); }
+.health { font-size: 0.9rem; color: var(--muted); margin: 0 0 1rem; }
+.health.warn { color: var(--warn); }
+.health.ok { color: var(--accent); }
+#job-actions button { margin-top: 0.5rem; }
