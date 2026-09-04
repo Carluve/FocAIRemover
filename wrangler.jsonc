@@ -1,0 +1,71 @@
+// FocAIRemover — Workers config stub.
+// MVP: static UI from apps/web + Worker that serves assets and refuses /api/*.
+// v1+: uncomment containers + durable_objects + migrations; implement
+//      CleanerContainer in apps/worker (see docs/PLAN.md).
+// v1.5: uncomment r2_buckets (and optionally ai / ratelimits).
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "focairemover",
+  "main": "apps/worker/src/index.ts",
+  // Set this to today's date when implementing; keep it recent.
+  "compatibility_date": "2026-09-04",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1,
+  },
+  "assets": {
+    // Browser-first MVP: Layer A + image/AV metadata strip live here.
+    "directory": "./apps/web",
+    "binding": "ASSETS",
+    // Worker sees /api/* first; everything else falls through to the UI.
+    "run_worker_first": true,
+  },
+  "vars": {
+    "ENVIRONMENT": "development",
+    // Public UI origin for any future CORS allowlist. Never "*".
+    "ALLOWED_ORIGIN": "https://focairemover.example.workers.dev",
+  },
+
+  // --- v1: Cloudflare Containers wrapping the upstream cleaner image ---
+  // Each Container is backed by a Durable Object. Worker class MUST set
+  // defaultPort = 8765 (upstream EXPOSE + CMD bind 0.0.0.0:8765).
+  // Native GHCR pull is not in Cloudflare's pre-built image list; Wrangler
+  // builds containers/cleaner/Dockerfile (FROM ghcr.io/...) and pushes to
+  // the Cloudflare registry on `wrangler deploy`.
+  //
+  // "containers": [
+  //   {
+  //     "class_name": "CleanerContainer",
+  //     "image": "./containers/cleaner/Dockerfile",
+  //     "max_instances": 3,
+  //     // lite is too small for ffmpeg/ghostscript/qpdf + Python; start at basic.
+  //     "instance_type": "basic"
+  //   }
+  // ],
+  // "durable_objects": {
+  //   "bindings": [
+  //     { "name": "CLEANER", "class_name": "CleanerContainer" }
+  //   ]
+  // },
+  // "migrations": [
+  //   { "tag": "v1", "new_sqlite_classes": ["CleanerContainer"] }
+  // ],
+
+  // --- v1.5: large files via R2 (avoid buffering JSON+base64 in the Worker) ---
+  // "r2_buckets": [
+  //   { "binding": "UPLOADS", "bucket_name": "focairemover-uploads" }
+  // ],
+
+  // --- v1.5 optional: Workers AI for Layer B rewrite (non-Claude model) ---
+  // "ai": { "binding": "AI" },
+
+  // --- v1: Workers Rate Limiting (GA). Namespace id is account-local. ---
+  // "ratelimits": [
+  //   {
+  //     "name": "CLEAN_RATE_LIMITER",
+  //     "namespace_id": "1001",
+  //     "simple": { "limit": 20, "period": 60 }
+  //   }
+  // ]
+}

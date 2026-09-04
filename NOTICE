@@ -1,0 +1,51 @@
+FocAIRemover
+============
+
+This project is MIT-licensed. Cleaning algorithms, format dispatch, and the
+HTTP API contract are derived from watermarks-remover; the UI pattern is
+inspired by (not affiliated with) unmark-web. This repository does not vendor
+the upstream Python tree.
+
+----------------------------------------------------------------------
+
+watermarks-remover
+https://github.com/guillaumemeyer/watermarks-remover
+Used under the MIT License.
+
+MIT License
+
+Copyright (c) 2026 Guillaume Meyer and contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+The published core image used by `containers/cleaner/` is:
+
+    ghcr.io/guillaumemeyer/watermarks-remover
+
+Pin a release tag in production. The image's own LICENSE and NOTICE, if
+present in the filesystem, remain authoritative for files inside the image.
+
+----------------------------------------------------------------------
+
+unmark-web (UI inspiration only; not affiliated)
+https://github.com/ivanusto/unmark-web
+MIT License. Independent browser-first client for watermarks-remover.
+FocAIRemover is not a fork of unmark-web and is not an official component of
+watermarks-remover. If JavaScript engines are later ported from upstream
+Python (as unmark-web does), preserve this NOTICE and the upstream copyright.

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FocAIRemover — planificación / planning</title>
+    <meta
+      name="description"
+      content="Limpieza verificable de Unicode invisible y metadatos C2PA/EXIF/XMP. No garantiza la eliminación de marcas estadísticas de Anthropic."
+    />
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f4f1ea;
+        --fg: #1f1c18;
+        --muted: #5c564c;
+        --card: #fffdf8;
+        --accent: #3d6b5a;
+        --warn: #8a5a28;
+        --border: #d9d1c3;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #1c1a17;
+          --fg: #f0ebe3;
+          --muted: #b4aa9c;
+          --card: #26231f;
+          --accent: #8fbfa8;
+          --warn: #e0b07a;
+          --border: #3d3832;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font: 16px/1.5 system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--fg);
+      }
+      main { max-width: 44rem; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+      h1 { font-size: 1.75rem; letter-spacing: -0.02em; }
+      .status {
+        display: inline-block;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--accent);
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        padding: 0.15rem 0.7rem;
+      }
+      .drop {
+        margin: 1.5rem 0;
+        padding: 2.5rem 1rem;
+        border: 2px dashed var(--border);
+        border-radius: 12px;
+        background: var(--card);
+        text-align: center;
+        color: var(--muted);
+      }
+      .caveat {
+        border-left: 4px solid var(--warn);
+        padding: 0.75rem 1rem;
+        background: var(--card);
+        border-radius: 0 8px 8px 0;
+      }
+      ul { padding-left: 1.2rem; }
+      a { color: var(--accent); }
+      footer { margin-top: 2.5rem; font-size: 0.85rem; color: var(--muted); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="status">planning / scaffold · MVP not implemented</p>
+      <h1>FocAIRemover</h1>
+      <p>
+        App web en Cloudflare para quitar marcas de procedencia de IA de
+        <strong>contenido que tú posees</strong>.
+      </p>
+      <p>
+        Cloudflare-hosted cleaner for AI provenance marks on
+        <strong>content you own</strong>.
+      </p>
+
+      <div class="drop" role="note">
+        Zona de arrastrar y soltar — stub.<br />
+        Drag-and-drop zone — stub. Cleaning engines are not wired yet.
+      </div>
+
+      <div class="caveat">
+        <p><strong>Lo verificable / Verifiable</strong></p>
+        <ul>
+          <li>Capa A / Layer A: Unicode invisible (ZWSP, bidi, tags, homoglifos de espacio).</li>
+          <li>Metadatos de archivo: C2PA / EXIF / XMP (imagen y AV en el navegador; PDF/DOCX en v1).</li>
+        </ul>
+        <p><strong>Lo que no se certifica / Not certified</strong></p>
+        <ul>
+          <li>
+            Marcas estadísticas de texto (Claude/Anthropic, Kirchenbauer, SynthID-Text):
+            solo se <em>debilitan</em> con reescritura pesada (Capa B). Mejor esfuerzo.
+            <strong>Nunca «Anthropic watermark guaranteed removed».</strong>
+          </li>
+        </ul>
+      </div>
+
+      <p>
+        Plan de arquitectura / architecture plan:
+        <code>docs/PLAN.md</code>
+        · ética / ethics: <code>docs/ETHICS.md</code>
+        (this repository).
+      </p>
+    </main>
+    <footer>
+      Derivado de watermarks-remover (MIT). UI inspirada en unmark-web, no afiliada.
+      Derived from watermarks-remover (MIT). UI inspired by unmark-web, not affiliated.
+    </footer>
+  </body>
+</html>

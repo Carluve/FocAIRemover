@@ -1,0 +1,11 @@
+# Local secrets for `wrangler dev`. Copy to `.dev.vars` (gitignored).
+# Never commit real keys.
+
+# Optional bearer token the Worker will require on /api/* (v1+).
+# CLEANER_API_KEY=
+
+# Optional OpenAI-compatible rewrite backend (v1.5 Layer B). Never Claude
+# for Claude-origin text. Prefer a non-origin model.
+# REWRITE_BASE_URL=https://api.example.com
+# REWRITE_MODEL=some-open-model
+# REWRITE_API_KEY=
