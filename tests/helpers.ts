@@ -10,6 +10,12 @@ export const ORIGIN = "https://focairemover.carluve.workers.dev";
 export function testEnv(overrides: Record<string, unknown> = {}): Env {
   return {
     ...env,
+    // Hermetic by default. A developer's .dev.vars is loaded into the test env
+    // by wrangler, so without this a local CLEANER_URL would silently point the
+    // suite at a real cleaner. Tests opt in to a cleaner explicitly.
+    CLEANER_URL: undefined,
+    CLEANER: undefined,
+    CLEANER_OPTIONS: "",
     // Deterministic by default. Tests that care about throttling pass their own.
     RATE_LIMITER: allowAllLimiter(),
     ...overrides,
@@ -73,7 +79,7 @@ export type FakeCleaner = {
   /** Drop-in for env.CLEANER (the Containers/Durable Object dispatch path). */
   namespace: DurableObjectNamespace;
   /** One entry per /clean call, with the decoded payload the Worker sent. */
-  calls: { path: string; name?: string; fileBase64?: string }[];
+  calls: { path: string; name?: string; fileBase64?: string; options?: unknown }[];
 };
 
 function cleanerResponse(behaviour: Extract<CleanerBehaviour, { kind: "ok" }>): Response {
@@ -101,6 +107,7 @@ export function fakeCleaner(behaviour: CleanerBehaviour): FakeCleaner {
         path,
         name: typeof payload.name === "string" ? payload.name : undefined,
         fileBase64: typeof payload.file === "string" ? payload.file : undefined,
+        options: payload.options,
       });
       if (behaviour.kind === "unreachable") {
         throw new Error(behaviour.message ?? "connection refused");

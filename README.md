@@ -21,6 +21,30 @@ This is a **research / experimental** project, **not** a commercial product or a
 - Use on content you **own or are authorized to process**. Not academic fraud, not “human-written” theater. See [docs/ETHICS.md](docs/ETHICS.md), [docs/TOS.md](docs/TOS.md), [docs/DISCLAIMER.md](docs/DISCLAIMER.md).
 - Solo contenido que **posees o estás autorizado a procesar**. No fraude académico. Ver [docs/ETHICS.md](docs/ETHICS.md), [docs/TOS.md](docs/TOS.md), [docs/DISCLAIMER.md](docs/DISCLAIMER.md).
 
+## What actually works, by format / Qué funciona de verdad, por formato
+
+Measured against a live upstream `watermarks-remover` (`/clean`, `options: {}`),
+not assumed. Upstream routes by **extension**, and only the `text` kind requires
+a Layer B rewrite — which this project does **not** ship.
+
+| Upload | Upstream `kind` | Result |
+| --- | --- | --- |
+| `.md`, `.html` | `container` | ✅ Layer A applied (invisible Unicode removed), AI frontmatter/meta stripped |
+| `.png`, `.jpg`, … | `image` | ✅ metadata stripped via exiftool; C2PA/AI-metadata flags reported |
+| `.pdf` | `container` | ⚠️ works, but degraded without `exiftool`/`qpdf` on the cleaner |
+| **`.txt`** | `text` | ❌ **fails**: upstream makes Layer B **mandatory** for plain text |
+
+**Plain `.txt` does not work with a Layer-A-only deployment.** Upstream's
+`/clean` rejects it with `Layer B strategy needs an LLM rewrite backend`. The job
+fails with an explained `layer_b_required` error. To make `.txt` work you must
+set `CLEANER_OPTIONS` **and** configure a rewrite backend on the cleaner — which
+**sends the user's text to a language model**, a data-flow this README's table
+below treats as a separate phase. Uploading the same content as `.md` cleans it
+with Layer A and no model.
+
+**El `.txt` plano no funciona** en un despliegue de solo Capa A: upstream exige
+Capa B para texto. Sube el mismo contenido como `.md` y sí se limpia.
+
 Design is based on the highest-starred upstream **[guillaumemeyer/watermarks-remover](https://github.com/guillaumemeyer/watermarks-remover)** (~20k★, MIT, v0.7.0). UI inspiration: **[ivanusto/unmark-web](https://github.com/ivanusto/unmark-web)** (browser-first, **not affiliated**). This repo does **not** vendor the upstream Python tree.
 
 El diseño se basa en el upstream con más estrellas. Inspiración de UI: unmark-web (**no afiliado**). Este repo **no** incluye el árbol Python de upstream.

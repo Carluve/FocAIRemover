@@ -32,6 +32,12 @@
     "MAX_UPLOAD_BYTES": "8388608",
     // Must stay under the 30s ctx.waitUntil() budget when CLEAN_QUEUE is unbound.
     "CLEANER_TIMEOUT_MS": "20000",
+    // JSON forwarded as `options` to watermarks-remover /clean. Empty = Layer A
+    // only, which is what this project claims to do. Upstream makes Layer B
+    // MANDATORY for the `text` kind, so plain .txt fails until you set a
+    // strategy here AND configure a rewrite backend on the cleaner — which
+    // sends user text to a model. .md/.html/images/PDF need nothing here.
+    "CLEANER_OPTIONS": "",
     // ANONYMOUS ACCESS. "true" serves /api/upload and /api/jobs with no bearer
     // token, which is what the bundled drag-drop UI needs — it cannot hold a
     // secret. Anyone can then upload and spend R2 on this account; the rate

@@ -8,6 +8,7 @@
  */
 
 import { Buffer } from "node:buffer";
+import { logEvent } from "./http";
 
 export type CleanerResult =
   | {
@@ -37,6 +38,46 @@ function base64ToUint8(b64: string): Uint8Array {
   return new Uint8Array(Buffer.from(b64, "base64"));
 }
 
+/**
+ * Options forwarded to watermarks-remover `/clean`.
+ *
+ * Empty by default, which is Layer A only. Upstream routes by extension and
+ * only the `text` kind (.txt) makes Layer B mandatory, so an operator who wants
+ * .txt to work sets CLEANER_OPTIONS to something like
+ * {"strategy":"paraphrase@0.8"} *and* configures a rewrite backend on the
+ * cleaner. See docs/DEPLOY.md — this sends user text to a model.
+ */
+export function cleanerOptions(env: Env): Record<string, unknown> {
+  const raw = String(env.CLEANER_OPTIONS ?? "").trim();
+  if (!raw) return {};
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed as Record<string, unknown>;
+    }
+    logEvent({ msg: "cleaner_options_not_object", raw });
+  } catch {
+    logEvent({ msg: "cleaner_options_bad_json", raw });
+  }
+  return {};
+}
+
+/**
+ * Upstream requires a Layer B rewrite for the `text` kind and rejects with 400
+ * when no backend is configured. That message says nothing about what the user
+ * should do, so translate it once, here.
+ */
+function explainCleanerError(status: number, errText: string): string {
+  if (status === 400 && /Layer B/i.test(errText)) {
+    return (
+      "layer_b_required: plain .txt needs a Layer B rewrite backend on the cleaner " +
+      "(upstream makes it mandatory for the text kind). .md, .html, images and PDFs " +
+      `clean with Layer A only. Upstream said: ${errText}`
+    );
+  }
+  return errText;
+}
+
 export async function callCleaner(
   env: Env,
   params: { bytes: Uint8Array; name: string; timeoutMs: number },
@@ -44,7 +85,7 @@ export async function callCleaner(
   const payload = JSON.stringify({
     file: uint8ToBase64(params.bytes),
     name: params.name,
-    options: {},
+    options: cleanerOptions(env),
   });
 
   const headers: Record<string, string> = {
@@ -93,7 +134,12 @@ export async function callCleaner(
         : typeof body.message === "string"
           ? body.message
           : `cleaner HTTP ${res.status}`;
-    return { ok: false, status: res.status, error: errText, detail: body };
+    return {
+      ok: false,
+      status: res.status,
+      error: explainCleanerError(res.status, errText),
+      detail: body,
+    };
   }
 
   if (typeof body.cleaned !== "string") {

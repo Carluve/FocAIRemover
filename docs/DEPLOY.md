@@ -58,6 +58,29 @@ npx wrangler secret put CLEANER_URL                 # only if cleaner is not a C
 
 Without `CLEANER_URL` / Containers, uploads still go to R2; jobs end in `error` (`cleaner_unreachable`). That is intentional.
 
+## 4a. Cleaner options and the plain-text limitation
+
+`CLEANER_OPTIONS` (a JSON string in `wrangler.jsonc`) is forwarded as `options`
+to upstream `/clean`. Empty means **Layer A only**, which is what this project
+claims to do, and is correct for `.md`, `.html`, images and PDFs.
+
+Plain `.txt` is different. Upstream routes it to the `text` kind and makes a
+**Layer B rewrite mandatory**, rejecting the request with
+`Layer B strategy needs an LLM rewrite backend (WATERMARKS_REWRITE_BACKEND)`.
+The Worker turns that into a `layer_b_required` job error that says so.
+
+To make `.txt` clean you need **both**:
+
+1. a rewrite backend on the cleaner itself — `WATERMARKS_REWRITE_BACKEND`
+   (`openai-compatible` or `ollama`) plus `WATERMARKS_REWRITE_MODEL` /
+   `_BASE_URL` / `_API_KEY`; or `transformers` installed for a local `mlm` step;
+2. `CLEANER_OPTIONS` here, e.g. `{"strategy":"paraphrase@0.8"}`.
+
+**This sends the user's text to a language model.** That is a different data
+posture from Layer A, and [DISCLAIMER.md](DISCLAIMER.md) plus the data table in
+[../README.md](../README.md) must stay accurate if you enable it. Layer B
+weakens statistical watermarks at best — never claim removal.
+
 ## 4b. Queues (durable job processing) — strongly recommended
 
 Unbound, the Worker cleans inside `ctx.waitUntil()`. That budget dies with the
