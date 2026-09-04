@@ -7,7 +7,7 @@
     "strict": true,
     "noEmit": true,
     "skipLibCheck": true,
-    "types": ["@cloudflare/workers-types"]
+    "types": ["node"]
   },
-  "include": ["apps/worker/src/**/*.ts", "worker-configuration.d.ts", "tests/**/*.ts"]
+  "include": ["apps/worker/src/**/*.ts", "worker-configuration.d.ts", "env.d.ts", "tests/**/*.ts"]
 }

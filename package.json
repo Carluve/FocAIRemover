@@ -17,7 +17,7 @@
     "smoke": "node scripts/smoke.mjs"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "latest",
+    "@types/node": "^26.4.1",
     "wrangler": "^4"
   }
 }

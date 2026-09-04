@@ -55,13 +55,13 @@ const BLOCKED_EXT = new Set([
 ]);
 
 export class ValidationError extends Error {
-  constructor(
-    message: string,
-    readonly code: string,
-    readonly status = 400,
-  ) {
+  readonly code: string;
+  readonly status: number;
+  constructor(message: string, code: string, status = 400) {
     super(message);
     this.name = "ValidationError";
+    this.code = code;
+    this.status = status;
   }
 }
 
@@ -80,7 +80,8 @@ export function sanitizeDownloadName(original: string, fallbackExt: string): str
   }
   const ext = extensionOf(cleaned);
   if (!ext) return `${cleaned}.cleaned.${fallbackExt || "bin"}`;
-  return cleaned.replace(/\.[^.]+$/, ".cleaned.$&");
+  const stem = cleaned.slice(0, cleaned.lastIndexOf("."));
+  return `${stem}.cleaned.${ext}`;
 }
 
 export function assertAllowedFile(filename: string, contentType: string | null, size: number, maxBytes: number): {

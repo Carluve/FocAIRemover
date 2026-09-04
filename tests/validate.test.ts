@@ -41,5 +41,5 @@ test("download name sanitizes path chars", () => {
   assert.equal(extensionOf("a/b/c.PDF"), "pdf");
   const name = sanitizeDownloadName("../../etc/passwd.txt", "txt");
   assert.equal(name.includes(".."), false);
-  assert.match(name, /cleaned/);
+  assert.equal(name, "passwd.cleaned.txt");
 });

@@ -62,26 +62,26 @@ async function handleApi(
 
   try {
     if (url.pathname === "/api/health" && request.method === "GET") {
-      return health(env);
+      return await health(env);
     }
     if (url.pathname === "/api/upload" && request.method === "POST") {
-      return rateLimited(request, env, () => upload(request, env, ctx));
+      return await rateLimited(request, env, () => upload(request, env, ctx));
     }
     if (url.pathname === "/api/jobs" && request.method === "POST") {
-      return rateLimited(request, env, () => startJob(request, env, ctx));
+      return await rateLimited(request, env, () => startJob(request, env, ctx));
     }
     if (url.pathname === "/api/clean" && request.method === "POST") {
-      return rateLimited(request, env, () => startJob(request, env, ctx));
+      return await rateLimited(request, env, () => startJob(request, env, ctx));
     }
 
     const jobMatch = /^\/api\/jobs\/([^/]+)(?:\/(download))?$/.exec(url.pathname);
     if (jobMatch) {
       const jobId = decodeURIComponent(jobMatch[1] ?? "");
       if (jobMatch[2] === "download" && request.method === "GET") {
-        return download(env, jobId);
+        return await download(env, jobId);
       }
       if (request.method === "GET") {
-        return jobStatus(env, jobId);
+        return await jobStatus(env, jobId);
       }
     }
 
