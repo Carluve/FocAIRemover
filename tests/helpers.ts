@@ -48,7 +48,10 @@ export type UploadOptions = {
 };
 
 export async function upload(workerEnv: Env, options: UploadOptions = {}): Promise<Response> {
-  const name = options.name ?? "notes.txt";
+  // Markdown by default: .txt is now cleaned in-Worker by Layer A and never
+  // reaches the cleaner, so tests exercising the cleaner must use a
+  // container-kind extension. tests/layer-a-job.test.ts covers .txt.
+  const name = options.name ?? "notes.md";
   const form = new FormData();
   form.set("file", new File([options.content ?? "hello"], name, { type: options.type ?? "text/plain" }), name);
 

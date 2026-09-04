@@ -1,7 +1,20 @@
-import { callCleaner } from "./cleaner";
+import { callCleaner, cleanerOptions } from "./cleaner";
 import { finishJob, getJob } from "./jobs";
 import { DEFAULT_CLEANER_TIMEOUT_MS, r2CleanedKey, r2OriginalKey, r2ReportKey } from "./keys";
 import { logEvent } from "./http";
+import { cleanText, type CleanTextOptions } from "./layer-a/clean-text";
+
+/**
+ * Extensions cleaned in the Worker instead of the container.
+ *
+ * Upstream routes only plain text to its `text` kind, where it makes a Layer B
+ * LLM rewrite mandatory — so .txt could never be cleaned by the container
+ * without sending the user's prose to a model. Layer A is verifiable and needs
+ * no model, so the Worker runs it here. Everything else (.md and .html are
+ * `container`, images are `image`) still goes to the cleaner, which does
+ * metadata work the Worker cannot.
+ */
+const WORKER_LAYER_A_EXTENSIONS: ReadonlySet<string> = new Set(["txt"]);
 
 /**
  * `retry` means a transient cleaner failure: the job goes back to `queued` so
@@ -37,6 +50,11 @@ export async function processJob(env: Env, jobId: string): Promise<JobOutcome> {
   }
 
   const bytes = new Uint8Array(await original.arrayBuffer());
+
+  if (WORKER_LAYER_A_EXTENSIONS.has(job.extension)) {
+    return layerAOnly(env, jobId, job, bytes);
+  }
+
   logEvent({ msg: "cleaner_attempt", jobId, size: bytes.byteLength, name: job.original_name });
 
   const result = await callCleaner(env, {
@@ -71,6 +89,85 @@ export async function processJob(env: Env, jobId: string): Promise<JobOutcome> {
   await finishJob(env.JOBS, jobId, { status: retry ? "queued" : "error", error: lastError });
   logEvent({ msg: retry ? "job_retry" : "job_error", jobId, error: lastError });
   return retry ? "retry" : "error";
+}
+
+/** Upstream option names (snake_case) mapped onto the port's options. */
+function layerAOptions(env: Env): CleanTextOptions {
+  const raw = cleanerOptions(env);
+  const flag = (key: string): boolean | undefined =>
+    typeof raw[key] === "boolean" ? (raw[key] as boolean) : undefined;
+  return {
+    nfkc: flag("nfkc"),
+    aggressiveHomoglyphs: flag("aggressive_homoglyphs"),
+    normalizeSpaces: flag("normalize_spaces"),
+    stripEmojiGlue: flag("strip_emoji_glue"),
+    stripBidi: flag("strip_bidi"),
+  };
+}
+
+/**
+ * Clean plain text in the Worker. No container, no model, no network — which is
+ * why this path is the one the README can call verifiable.
+ */
+async function layerAOnly(
+  env: Env,
+  jobId: string,
+  job: { content_type: string | null; original_name: string },
+  bytes: Uint8Array,
+): Promise<JobOutcome> {
+  let text: string;
+  try {
+    // Strict: a replacement-character decode would silently corrupt the file.
+    text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(bytes);
+  } catch {
+    await finishJob(env.JOBS, jobId, {
+      status: "error",
+      error: "not_utf8_text: plain text uploads must be valid UTF-8",
+    });
+    logEvent({ msg: "layer_a_not_utf8", jobId });
+    return "error";
+  }
+
+  const { text: cleaned, stats } = cleanText(text, layerAOptions(env));
+  const cleanedBytes = new TextEncoder().encode(cleaned);
+  const report = {
+    kind: "text",
+    engine: "worker-layer-a",
+    actions: [
+      `layer A text: removed=${stats.removedCount} replaced=${stats.replacedCount}`,
+      ...(stats.nfkcChanged ? ["NFKC normalised"] : []),
+    ],
+    changed: cleaned !== text,
+    stats,
+    // Stated in the artefact itself, not just the docs.
+    layer_b: "not applied; statistical text watermarks are NOT addressed here",
+  };
+
+  await Promise.all([
+    env.FOCAI_FILES.put(r2CleanedKey(jobId), cleanedBytes, {
+      httpMetadata: { contentType: job.content_type || "text/plain; charset=utf-8" },
+      customMetadata: { jobId, kind: "text", originalName: job.original_name },
+    }),
+    env.FOCAI_FILES.put(r2ReportKey(jobId), JSON.stringify(report), {
+      httpMetadata: { contentType: "application/json" },
+    }),
+  ]);
+
+  await finishJob(env.JOBS, jobId, {
+    status: "done",
+    cleaned_size_bytes: cleanedBytes.byteLength,
+    report_summary: JSON.stringify(summarizeReport("text", report)),
+    error: null,
+  });
+  logEvent({
+    msg: "job_done",
+    jobId,
+    kind: "text",
+    engine: "worker-layer-a",
+    removed: stats.removedCount,
+    replaced: stats.replacedCount,
+  });
+  return "done";
 }
 
 function summarizeReport(kind: string, report: unknown): Record<string, unknown> {

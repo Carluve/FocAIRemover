@@ -18,7 +18,8 @@ async function statusOf(workerEnv: Env, jobId: string): Promise<Record<string, u
   return (await (await getJob(workerEnv, jobId)).json()) as Record<string, unknown>;
 }
 
-async function uploadedJobId(workerEnv: Env, name = "notes.txt"): Promise<string> {
+// Markdown: .txt is cleaned in-Worker by Layer A and never reaches the cleaner.
+async function uploadedJobId(workerEnv: Env, name = "notes.md"): Promise<string> {
   const body = (await (await upload(workerEnv, { name })).json()) as Record<string, unknown>;
   return String(body.id);
 }
@@ -31,12 +32,12 @@ describe("clean pipeline (waitUntil fallback)", () => {
       reportKind: "text",
     });
 
-    const jobId = await uploadedJobId(workerEnv, "essay.txt");
+    const jobId = await uploadedJobId(workerEnv, "essay.md");
 
     // The Worker sent the uploaded bytes to the cleaner, base64-encoded.
     expect(cleaner.calls).toHaveLength(1);
     expect(cleaner.calls[0]!.path).toBe("/clean");
-    expect(cleaner.calls[0]!.name).toBe("essay.txt");
+    expect(cleaner.calls[0]!.name).toBe("essay.md");
     expect(atob(cleaner.calls[0]!.fileBase64!)).toBe("hello");
 
     const status = await statusOf(workerEnv, jobId);
@@ -52,7 +53,7 @@ describe("clean pipeline (waitUntil fallback)", () => {
     const res = await download(workerEnv, jobId);
     expect(res.status).toBe(200);
     expect(await res.text()).toBe("no zero width here");
-    expect(res.headers.get("content-disposition")).toBe('attachment; filename="essay.cleaned.txt"');
+    expect(res.headers.get("content-disposition")).toBe('attachment; filename="essay.cleaned.md"');
     expect(res.headers.get("cache-control")).toBe("private, no-store");
     expect(res.headers.get("x-content-type-options")).toBe("nosniff");
   });

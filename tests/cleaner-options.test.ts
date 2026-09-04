@@ -51,7 +51,10 @@ describe("options reach the cleaner", () => {
 });
 
 describe("Layer B rejection is explained, not echoed", () => {
-  test("a .txt rejected for Layer B fails permanently with actionable text", async () => {
+  // .txt no longer reaches the cleaner (the Worker cleans it with Layer A), but
+  // any upstream Layer B rejection must still arrive as actionable text rather
+  // than a raw echo.
+  test("an upstream Layer B rejection fails permanently with actionable text", async () => {
     const { env: workerEnv } = envWithCleaner({
       kind: "http",
       status: 400,
@@ -61,7 +64,7 @@ describe("Layer B rejection is explained, not echoed", () => {
       },
     });
 
-    const created = (await (await upload(workerEnv, { name: "ensayo.txt" })).json()) as Record<
+    const created = (await (await upload(workerEnv, { name: "ensayo.md" })).json()) as Record<
       string,
       unknown
     >;

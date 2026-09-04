@@ -72,19 +72,20 @@ check("download is not cacheable", dl.headers.get("cache-control") === "private,
 check("invisible Unicode removed", !cleaned.includes(ZW));
 check("visible text preserved", cleaned === ORIGINAL.replaceAll(ZW, ""), JSON.stringify(cleaned));
 
-// Plain .txt is the one allowlisted format upstream cannot clean with Layer A
-// alone. Either the operator configured a Layer B backend and it cleans, or the
-// job must fail with our explained error rather than a raw upstream echo.
-const plain = await upload("ensayo.txt", ORIGINAL);
+// Plain .txt is cleaned in the Worker by the Layer A port. Upstream would
+// reject it (Layer B is mandatory for its `text` kind), so a success here also
+// proves the request never went to the container.
+const EMOJI = "listo ❤️‍🔥 y 👨‍👩‍👧";
+const plain = await upload("ensayo.txt", `${ORIGINAL}\n${EMOJI}${ZW}`);
 const plainJob = await poll(plain.body.id);
+check("plain .txt cleaned by the Worker", plainJob.status === "done", `error=${plainJob.error}`);
 if (plainJob.status === "done") {
   const out = await (await fetch(`${BASE}/api/jobs/${plain.body.id}/download`)).text();
-  check("plain .txt cleaned (Layer B backend configured)", !out.includes(ZW));
-} else {
+  check("invisible Unicode gone from .txt", !out.includes(ZW));
+  check("emoji sequences survived the .txt clean", out.endsWith(EMOJI), JSON.stringify(out.slice(-24)));
   check(
-    "plain .txt fails with an actionable Layer B message",
-    String(plainJob.error).startsWith("layer_b_required:"),
-    plainJob.error,
+    "report says Layer B was not applied",
+    String(plainJob.reportSummary?.layer_b || "").includes("not applied"),
   );
 }
 
