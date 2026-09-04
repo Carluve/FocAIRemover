@@ -58,6 +58,45 @@ npx wrangler secret put CLEANER_URL                 # only if cleaner is not a C
 
 Without `CLEANER_URL` / Containers, uploads still go to R2; jobs end in `error` (`cleaner_unreachable`). That is intentional.
 
+## 4c. Turnstile (required before a public deploy)
+
+In public mode the per-IP rate limiter is the only brake, and it only slows a
+single attacker down. Turnstile is what makes anonymous uploads defensible. The
+Worker code is already wired; verification is a **no-op until the secret exists**,
+so local dev and `npm test` are unaffected.
+
+Create the widget from a **canonical Wrangler outside this project** (never
+`npx`, never a project-local binary, for a credential-bearing command). It needs
+Wrangler **4.109+** for the `turnstile` subcommand:
+
+```bash
+brew upgrade wrangler          # /opt/homebrew/bin/wrangler was 4.71, too old
+wrangler --version             # must be >= 4.109
+export CLOUDFLARE_ACCOUNT_ID=39f8ea10b94ad38470fc3c20c260efdc
+wrangler turnstile widget create "FocAIRemover" \
+  --domain focairemover.carluve.workers.dev \
+  --domain localhost --domain 127.0.0.1 \
+  --mode managed --json
+```
+
+Then, **without printing the secret**:
+
+```bash
+# 1. Public sitekey -> wrangler.jsonc vars.TURNSTILE_SITEKEY
+# 2. Secret -> Worker secret, read from stdin, never an argument:
+wrangler turnstile widget get <SITEKEY> --json \
+  | jq -er .secret \
+  | npx wrangler secret put TURNSTILE_SECRET
+```
+
+`TURNSTILE_HOSTNAMES` must list only production hostnames. Never put `localhost`
+there: the widget accepts local domains so you can test, and a production
+backend that also trusted `localhost` would accept a token minted on any dev
+machine. With a secret set and `TURNSTILE_HOSTNAMES` empty the Worker returns
+503 rather than verifying weakly.
+
+Check it landed: `GET /api/health` reports `turnstile: "on"` and the sitekey.
+
 ## 4a. Cleaner options and the plain-text limitation
 
 `CLEANER_OPTIONS` (a JSON string in `wrangler.jsonc`) is forwarded as `options`

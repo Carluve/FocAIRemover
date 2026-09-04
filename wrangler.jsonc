@@ -45,6 +45,14 @@
     // API_KEY` for an API-client-only deploy. Never leave this unset-and-open
     // by accident: unset + no API_KEY now returns 503, not an open door.
     "PUBLIC_UPLOADS": "true",
+    // Turnstile. The sitekey is public and is served to the UI via /api/health;
+    // the secret is a Worker secret (`wrangler secret put TURNSTILE_SECRET`).
+    // Verification is a no-op until the secret exists, so local dev and tests
+    // are unaffected. Fill the sitekey in after creating the widget.
+    "TURNSTILE_SITEKEY": "",
+    // Hostnames siteverify must report back. Production only — never list
+    // localhost here, or a token minted on a dev box would be accepted.
+    "TURNSTILE_HOSTNAMES": "focairemover.carluve.workers.dev",
   },
   "r2_buckets": [
     {

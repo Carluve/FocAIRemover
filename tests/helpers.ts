@@ -45,6 +45,7 @@ export type UploadOptions = {
   ip?: string;
   idempotencyKey?: string;
   bearer?: string;
+  turnstileToken?: string;
 };
 
 export async function upload(workerEnv: Env, options: UploadOptions = {}): Promise<Response> {
@@ -54,6 +55,7 @@ export async function upload(workerEnv: Env, options: UploadOptions = {}): Promi
   const name = options.name ?? "notes.md";
   const form = new FormData();
   form.set("file", new File([options.content ?? "hello"], name, { type: options.type ?? "text/plain" }), name);
+  if (options.turnstileToken) form.set("cf-turnstile-response", options.turnstileToken);
 
   const headers = new Headers();
   if (options.ip) headers.set("cf-connecting-ip", options.ip);

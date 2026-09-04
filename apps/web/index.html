@@ -51,8 +51,12 @@
             hidden
             accept=".txt,.md,.html,.htm,.pdf,.png,.jpg,.jpeg,.webp,.svg,.docx,.xlsx,.pptx"
           />
-          <span id="drop-label">Arrastra un fichero o haz clic para elegir (máx. 32 MiB)</span>
+          <span id="drop-label">Arrastra un fichero o haz clic para elegir (máx. 8 MiB)</span>
         </label>
+        <!-- Rendered explicitly by app.js only when /api/health reports a
+             sitekey, so the page still works with Turnstile switched off.
+             Tokens are single-use: the widget is reset after every attempt. -->
+        <div id="turnstile" hidden></div>
         <button type="submit" id="submit" disabled>Subir y limpiar</button>
       </form>
 

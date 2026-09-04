@@ -24,6 +24,7 @@ import {
 import { claimJob, getJob, getJobByIdempotency, insertJob, publicJob } from "./jobs";
 import { JOB_ID_RE, r2CleanedKey, r2MetaKey, r2OriginalKey } from "./keys";
 import { processJob } from "./process";
+import { TURNSTILE_ACTION, turnstileEnabled, verifyTurnstile } from "./turnstile";
 import { ValidationError, assertAllowedFile, parseMaxBytes, sanitizeDownloadName } from "./validate";
 
 /** Queue message body. Only the id travels — bytes stay in R2. */
@@ -164,6 +165,10 @@ async function health(env: Env): Promise<Response> {
     // Make the security posture readable from outside instead of guessable.
     auth: env.API_KEY?.trim() ? "bearer" : allowsAnonymous(env) ? "public" : "misconfigured",
     queue: env.CLEAN_QUEUE ? "queue" : "waitUntil",
+    // The UI needs the sitekey, and an operator needs to see whether the brake
+    // is actually on. The sitekey is public; the secret never leaves the Worker.
+    turnstile: turnstileEnabled(env) ? "on" : "off",
+    turnstileSitekey: env.TURNSTILE_SITEKEY || null,
     disclaimer:
       "Research/experimental. Files in R2 may be kept. No guaranteed watermark removal. AS IS.",
   });
@@ -182,6 +187,11 @@ async function upload(request: Request, env: Env, ctx: ExecutionContext): Promis
   }
 
   const form = await request.formData();
+
+  // Before any R2 write: an unverified request must not cost storage.
+  const denied = await verifyTurnstile(request, env, form.get("cf-turnstile-response"), TURNSTILE_ACTION);
+  if (denied) return denied;
+
   const file = form.get("file");
   if (!(file instanceof File)) {
     return clientError("missing_file", "multipart field `file` is required");
@@ -264,6 +274,15 @@ async function startJob(request: Request, env: Env, ctx: ExecutionContext): Prom
   if (!JOB_ID_RE.test(jobId)) {
     return clientError("invalid_job_id", "jobId must be a UUID");
   }
+
+  // Turnstile tokens are single-use, so a retry needs a freshly reset widget.
+  const denied = await verifyTurnstile(
+    request,
+    env,
+    body["cf-turnstile-response"],
+    TURNSTILE_ACTION,
+  );
+  if (denied) return denied;
   const row = await getJob(env.JOBS, jobId);
   if (!row) return clientError("not_found", "job not found", 404);
   if (row.status === "done") return json(publicJob(row), 200);
