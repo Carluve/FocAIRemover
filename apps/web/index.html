@@ -3,142 +3,67 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>FocAIRemover — planificación / planning</title>
+    <title>FocAIRemover — investigación</title>
     <meta
       name="description"
-      content="Limpieza verificable de Unicode invisible y metadatos C2PA/EXIF/XMP. No garantiza la eliminación de marcas estadísticas de Anthropic."
+      content="Proyecto de investigación. Limpieza verificable de Unicode invisible y metadatos C2PA/EXIF/XMP. Los ficheros se guardan en R2. No garantiza la eliminación de marcas de Anthropic."
     />
-    <style>
-      :root {
-        color-scheme: light dark;
-        --bg: #f4f1ea;
-        --fg: #1f1c18;
-        --muted: #5c564c;
-        --card: #fffdf8;
-        --accent: #3d6b5a;
-        --warn: #8a5a28;
-        --border: #d9d1c3;
-      }
-      @media (prefers-color-scheme: dark) {
-        :root {
-          --bg: #1c1a17;
-          --fg: #f0ebe3;
-          --muted: #b4aa9c;
-          --card: #26231f;
-          --accent: #8fbfa8;
-          --warn: #e0b07a;
-          --border: #3d3832;
-        }
-      }
-      * { box-sizing: border-box; }
-      body {
-        margin: 0;
-        font: 16px/1.5 system-ui, sans-serif;
-        background: var(--bg);
-        color: var(--fg);
-      }
-      main { max-width: 44rem; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
-      h1 { font-size: 1.75rem; letter-spacing: -0.02em; }
-      .status {
-        display: inline-block;
-        font-size: 0.8rem;
-        font-weight: 600;
-        color: var(--accent);
-        border: 1px solid var(--border);
-        border-radius: 999px;
-        padding: 0.15rem 0.7rem;
-      }
-      .drop {
-        margin: 1.5rem 0;
-        padding: 2.5rem 1rem;
-        border: 2px dashed var(--border);
-        border-radius: 12px;
-        background: var(--card);
-        text-align: center;
-        color: var(--muted);
-      }
-      .caveat {
-        border-left: 4px solid var(--warn);
-        padding: 0.75rem 1rem;
-        background: var(--card);
-        border-radius: 0 8px 8px 0;
-      }
-      ul { padding-left: 1.2rem; }
-      a { color: var(--accent); }
-      footer { margin-top: 2.5rem; font-size: 0.85rem; color: var(--muted); }
-    </style>
+    <link rel="stylesheet" href="./app.css" />
   </head>
   <body>
     <main>
-      <p class="status">investigación / experimental · no es un producto</p>
+      <p class="status">investigación / experimental · R2-backed · no es un producto</p>
       <h1>FocAIRemover</h1>
       <p>
-        Proyecto de investigación sobre marcas de procedencia de IA.
-        <strong>No</strong> es un producto comercial ni un servicio garantizado.
-        Solo <strong>contenido que tú posees o estás autorizado a procesar</strong>.
+        Sube un fichero. Se guarda en R2 (original + resultado). El Worker llama a
+        watermarks-remover <code>/clean</code>. <strong>No</strong> es un servicio
+        garantizado.
       </p>
-      <p>
-        <strong>Research / experimental</strong> — not a commercial product or a
-        guaranteed service. Content you own only.
+      <p class="en">
+        Research / experimental. Every file is stored in R2. No guaranteed watermark
+        removal. AS IS, no liability.
       </p>
 
       <div class="caveat">
-        <p><strong>Datos / Data</strong></p>
-        <ul>
-          <li>
-            MVP en el navegador: los <em>bytes del fichero</em> se quedan en la
-            pestaña (no hay upload al cleaner). Los logs de la página (IP, URL,
-            User-Agent) <strong>pueden guardarse</strong>.
-          </li>
-          <li>
-            v1 y posteriores: el fichero <strong>sale de tu máquina</strong>.
-            Uploads, copias, informes y metadatos de uso <strong>pueden
-            persistirse</strong> con fines de investigación u operación. No hay
-            promesa de borrado al instante.
-          </li>
-        </ul>
-        <p><strong>Descargo / Disclaimer</strong></p>
+        <p><strong>Datos</strong></p>
         <p>
-          El autor y el proyecto <strong>no se hacen responsables de nada</strong>:
-          ni del limpieado, ni de si un watermark sigue detectable, ni de tu uso,
-          ni de daños, pérdidas, sanciones académicas o legales, ni de fallos del
-          servicio. Software «tal cual» / AS IS, sin garantías.
-          Texto: <code>docs/DISCLAIMER.md</code>.
+          Originales, salidas e informes <strong>pueden persistirse</strong> en el
+          bucket R2 <code>focairemover-files</code> (cuenta Cloudflare enterprise)
+          con fines de investigación u operación. No hay promesa de borrado.
+        </p>
+        <p><strong>Descargo</strong></p>
+        <p>
+          El autor <strong>no se hace responsable de nada</strong>: limpiado,
+          watermarks que sigan detectables, tu uso, daños, pérdidas, sanciones
+          académicas o legales, fallos. Software «tal cual» / AS IS.
+          <code>docs/DISCLAIMER.md</code>.
+          <strong>Nunca «Anthropic watermark guaranteed removed».</strong>
         </p>
       </div>
 
-      <div class="drop" role="note">
-        Zona de arrastrar y soltar — stub.<br />
-        Drag-and-drop zone — stub. Cleaning engines are not wired yet.
-      </div>
+      <form id="upload-form">
+        <label id="drop" class="drop">
+          <input id="file" type="file" name="file" hidden />
+          <span id="drop-label">Arrastra un fichero o haz clic para elegir</span>
+        </label>
+        <button type="submit" id="submit" disabled>Subir y limpiar</button>
+      </form>
+
+      <section id="job" hidden>
+        <h2>Trabajo</h2>
+        <p id="job-status"></p>
+        <pre id="job-json"></pre>
+        <p id="job-actions"></p>
+      </section>
 
       <div class="caveat">
-        <p><strong>Lo verificable / Verifiable</strong></p>
-        <ul>
-          <li>Capa A / Layer A: Unicode invisible (ZWSP, bidi, tags, homoglifos de espacio).</li>
-          <li>Metadatos de archivo: C2PA / EXIF / XMP (imagen y AV en el navegador; PDF/DOCX en v1).</li>
-        </ul>
-        <p><strong>Lo que no se certifica / Not certified</strong></p>
-        <ul>
-          <li>
-            Marcas estadísticas de texto (Claude/Anthropic, Kirchenbauer, SynthID-Text):
-            solo se <em>debilitan</em> con reescritura pesada (Capa B). Mejor esfuerzo.
-            <strong>Nunca «Anthropic watermark guaranteed removed».</strong>
-          </li>
-        </ul>
+        <p><strong>Lo verificable</strong> — Capa A (Unicode invisible) y strip de metadatos C2PA/EXIF/XMP.</p>
+        <p><strong>No certificable</strong> — marcas estadísticas de texto (Claude/Anthropic, Kirchenbauer, SynthID-Text). Solo se debilitan con Capa B (mejor esfuerzo).</p>
       </div>
-
-      <p>
-        Plan de arquitectura / architecture plan:
-        <code>docs/PLAN.md</code>
-        · ética: <code>docs/ETHICS.md</code>
-        · descargo: <code>docs/DISCLAIMER.md</code>
-        (este repositorio).
-      </p>
     </main>
     <footer>
-      Derivado de watermarks-remover (MIT). UI inspirada en unmark-web, no afiliada.
-      Derived from watermarks-remover (MIT). UI inspired by unmark-web, not affiliated.
+      Derivado de watermarks-remover (MIT). No afiliado a Anthropic ni a unmark-web.
+      <script type="module" src="./app.js"></script>
     </footer>
   </body>
 </html>

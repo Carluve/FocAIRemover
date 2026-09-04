@@ -36,7 +36,7 @@ FROM ghcr.io/guillaumemeyer/watermarks-remover:latest
 
 # 16 MiB decoded file. JSON envelope is ~1.5× that (base64). Worker memory is
 # 128 MiB — do not raise this until v1.5 streams via R2.
-ENV WATERMARKS_MAX_INPUT_BYTES=16777216 \
+ENV WATERMARKS_MAX_INPUT_BYTES=33554432 \
     WATERMARKS_MAX_BATCH_FILES=8 \
     PYTHONUNBUFFERED=1
 

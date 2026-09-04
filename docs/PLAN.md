@@ -5,11 +5,10 @@
 
 **Nature:** research / experimental — **not** a commercial product or a guaranteed service. Binding disclaimer: [DISCLAIMER.md](DISCLAIMER.md).
 
-Estado / Status: **planificación + andamiaje**. El MVP de limpieza en el navegador aún no está implementado.
-This is **planning + scaffold**. Browser cleaning is not implemented yet.
+Estado / Status: **MVP R2-backed implementado** en la cuenta **enterprise** `39f8ea10b94ad38470fc3c20c260efdc` (bucket `focairemover-files`). Deploy: [DEPLOY.md](DEPLOY.md).
+This is an **R2-backed MVP**. Do not use the personal Cloudflare account.
 
-Documento pensado para que el **siguiente agente implemente el MVP sin reinvestigar el upstream**.
-Written so the **next agent can implement the MVP without re-researching upstream**.
+El siguiente trabajo es activar Containers en producción y, si se desea, Capa B.
 
 Fuentes comprobadas el **2026-09-04**:
 Sources checked **2026-09-04**:
@@ -33,7 +32,7 @@ These sentences must appear in the UI, README, and any marketing. Non-negotiable
 | **Nunca** afirmar: «marca de agua de Anthropic garantizada como eliminada». | **Never** claim **“Anthropic watermark guaranteed removed”**. |
 | Ética: contenido que el usuario **posee o está autorizado a procesar**. No fraude académico ni teatro de «escrito por un humano». | Ethics: content the user **owns / is authorized to process**; not academic fraud. |
 | Es un **proyecto de investigación**, no un producto ni un servicio con SLA. | This is a **research project**, not a product or an SLA service. |
-| Los **datos pueden guardarse** (uploads, logs, copias, metadatos de uso) salvo los bytes del fichero en el MVP del navegador. | **Data may be stored** (uploads, logs, copies, usage metadata) except file bytes in the browser MVP. |
+| Los **datos pueden guardarse**: **todo fichero subido va a R2** (original + cleaned + informes). | **Data may be stored**: **every uploaded file goes to R2** (original + cleaned + reports). |
 | El autor **no se hace responsable de nada**. Software «tal cual» / AS IS. Ver [DISCLAIMER.md](DISCLAIMER.md). | The author **accepts no responsibility whatsoever**. AS IS. See [DISCLAIMER.md](DISCLAIMER.md). |
 | Conservar atribución MIT / `NOTICE` del trabajo derivado de watermarks-remover. | Preserve MIT attribution / `NOTICE` for derived work from watermarks-remover. |
 
@@ -144,22 +143,21 @@ Píxeles **intocados** en MVP. `remove_pixel` (CtrlRegen / diffusion) = fuera de
 ## 3. Arquitectura Cloudflare por fases / Cloudflare architecture by phase
 
 ```
-MVP (sin contenedor)
-  Navegador ── Layer A + image/AV strip ── descarga local
-  Worker ── Static Assets (apps/web) + 501 en /api/*
-  Datos: bytes del fichero en la pestaña; logs de red/CDN/Worker posibles
+MVP (R2-backed — current)
+  Navegador ── POST /api/upload (multipart)
+            ── Worker ── R2 focairemover-files  uploads/{jobId}/original
+                       ── D1 focairemover-jobs  status
+                       ── waitUntil
+                       ── CLEANER_URL o Container :8765  POST /clean
+                       ── R2 uploads/{jobId}/cleaned + report.json
+  UI poll GET /api/jobs/:id → GET /api/jobs/:id/download (stream R2)
+  Datos: originales y salidas PUEDEN quedarse en R2. Sin TTL prometido.
 
-v1
-  Navegador ── same-origin /api/* ── Worker (límites, auth, rate limit)
-                                   └── Container defaultPort 8765
-                                       ghcr.io/guillaumemeyer/watermarks-remover
-                                       GET /health  POST /inspect  POST /clean
-  Datos: el fichero SALE de la máquina. Uploads/logs/copias PUEDEN persistirse.
+Containers (opt-in wrangler)
+  Mismo /clean en Cloudflare Containers (linux/amd64, defaultPort 8765).
 
-v1.5
-  + R2 para ficheros grandes (no buffer JSON+base64 en el isolate de 128 MiB)
-  + Capa B vía API OpenAI-compatible no-Claude o Workers AI
-  Datos: objetos en R2 y texto enviado al modelo PUEDEN persistirse.
+Capa B (más adelante)
+  Rewrite no-Claude; el texto sale a un proveedor de modelo.
 ```
 
 ### MVP — UI estática + todo en el navegador / Static UI + browser-side clean
@@ -276,19 +274,15 @@ curl -s -X POST "$WM/clean" -H 'Content-Type: application/json' \
 
 ## Datos por fase / Data by phase
 
-**Regla:** los datos **pueden guardarse**. No documentar «se borra al instante» ni «nunca sale de tu PC» salvo donde sea **técnicamente cierto** (bytes del fichero en el MVP del navegador). Investigación / operación **pueden** conservar copias. Texto vinculante: [DISCLAIMER.md](DISCLAIMER.md).
+**Regla:** los datos **pueden guardarse**. **Todo fichero subido va a R2** (`uploads/{jobId}/original`, `cleaned`, `report.json`). Investigación / operación **pueden** conservar copias. Texto vinculante: [DISCLAIMER.md](DISCLAIMER.md). Cuenta: enterprise `39f8ea10b94ad38470fc3c20c260efdc`, bucket `focairemover-files`.
 
-**Rule:** **data may be stored.** Do not document “deleted instantly” or “never leaves your PC” except where that is **technically true** (file bytes in the browser MVP). Research / operations **may** keep copies.
+**Rule:** **every uploaded file is stored in R2** and **may be kept**.
 
-| Fase | Bytes del fichero del usuario | Logs y metadatos de uso | Copias para investigación |
+| Fase | Bytes del fichero | Logs / metadatos | Investigación |
 | --- | --- | --- | --- |
-| **MVP (navegador)** | Se quedan en la pestaña. No hay `POST` al cleaner. La descarga es local. | **Sí, posibles:** Cloudflare/Workers al servir HTML/JS (IP, URL, User-Agent, `cf-ray`, estado). `observability` está previsto en `wrangler.jsonc`. | No hay upload que archivar. Los logs de petición **sí** pueden conservarse. |
-| **v1 (Worker + contenedor)** | **Salen de la máquina.** JSON+base64 (o stream) hacia el Worker y el contenedor en 8765. Disco del contenedor efímero **no** equivale a «no se guarda»: el Worker puede loguear, un operador puede persistir body o informe. | **Sí:** talla, `kind`, códigos, IP, timestamps, errores. No hay compromiso de no loguear el contenido. | **Sí, permitido.** Uploads, `cleaned`, `report` y metadatos **pueden** archivarse. Sin SLA de borrado ni de acceso del usuario a «borrar mis datos». |
-| **v1.5 (R2 + Capa B)** | **Salen de la máquina** y además pueden vivir en un bucket R2. | Igual que v1, más eventos de objeto (PUT/GET/DELETE). | **Sí.** R2 y el proveedor del modelo de reescritura (Workers AI u OpenAI-compatible) pueden retener texto o ficheros según *su* política, más copias del proyecto. |
-
-Implementación: la UI debe decir esto **antes** del primer `/clean` de servidor (checkbox o banner, no un footnote). El MVP debe decir que los bytes no se suben **y** que igual hay logs de la página.
-
-Do **not** restore the old TOS line that claimed v1 is ephemeral-only except R2.
+| **MVP R2 (actual)** | **En R2** antes/durante el clean. Claves opacas. Descarga por stream Worker desde R2. | D1 job row, IP (rate limit), observability Worker | **Sí.** Sin SLA de borrado |
+| **Containers / CLEANER_URL** | Pasan por el cleaner (JSON+base64 hoy) | Igual | Igual; tmp del contenedor no es garantía |
+| **Capa B futura** | Texto a un modelo tercero | Igual | El proveedor del modelo tiene su propia retención |
 
 ---
 
@@ -296,14 +290,12 @@ Do **not** restore the old TOS line that claimed v1 is ephemeral-only except R2.
 
 | Control | MVP | v1 |
 | --- | --- | --- |
-| Subida | No hay | Solo same-origin `/api`; tope **16 MiB** decodificado (env del contenedor + chequeo Worker) |
-| Rate limit | N/A | Workers Rate Limiting GA (`ratelimits` en wrangler), p.ej. 20 req/min/IP en `/api/clean` |
-| CORS | N/A (todo local) | Lista de orígenes (`ALLOWED_ORIGIN`). **Nunca `*`** en el API del cleaner |
-| Auth | N/A | Bearer opcional `CLEANER_API_KEY` en el Worker; opcionalmente `WATERMARKS_SERVER_API_KEY` dentro del contenedor |
-| ToS / ética / descargo | UI + [ETHICS.md](ETHICS.md) + [TOS.md](TOS.md) + [DISCLAIMER.md](DISCLAIMER.md) | Banner de investigación + datos + descargo **antes** del primer `/clean` de servidor |
-| Aislamiento | JS en el tab (fichero no sube) | `enableInternet = false`; uid 10001. Disco efímero **no** implica no retención |
-| Secretos | — | `.dev.vars` local; `wrangler secret put` en prod. Nunca en `wrangler.jsonc` |
-| Datos / logs | Logs de petición al servir estáticos | Uploads y metadatos **pueden** persistirse (investigación / operación). Ver [Datos por fase](#datos-por-fase--data-by-phase) |
+| Subida | Multipart `/api/upload` → R2; tope **32 MiB**; allowlist de extensiones | Igual |
+| Rate limit | `RATE_LIMITER` 30/60s namespace `904201` | Igual |
+| CORS | mismo origen o `ALLOWED_ORIGIN`. **Nunca `*`** | Igual |
+| Auth | Bearer opcional `API_KEY` | Igual |
+| ToS / ética / descargo | UI + DISCLAIMER | Banner visible |
+| Datos / logs | **R2 + D1**; pueden retenerse | [Datos por fase](#datos-por-fase--data-by-phase) |
 
 `MAX_BODY_BYTES` upstream = `MAX_INPUT_BYTES + MAX_INPUT_BYTES/2` (overhead base64). El Worker debe rechazar `Content-Length` por encima **antes** de leer el body.
 

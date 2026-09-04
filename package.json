@@ -1,15 +1,23 @@
 {
   "name": "focairemover",
   "private": true,
-  "version": "0.0.0",
-  "description": "Cloudflare-hosted AI provenance cleaner. Planning/MVP scaffold — see docs/PLAN.md.",
+  "version": "0.1.0",
+  "description": "Cloudflare-hosted AI provenance cleaner (R2-backed). Research/experimental. See docs/PLAN.md.",
   "license": "MIT",
+  "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
-    "types": "wrangler types"
+    "predeploy": "node scripts/assert-enterprise-account.mjs",
+    "deploy": "CLOUDFLARE_ACCOUNT_ID=39f8ea10b94ad38470fc3c20c260efdc wrangler deploy",
+    "types": "wrangler types",
+    "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "migrate:local": "wrangler d1 migrations apply focairemover-jobs --local",
+    "premigrate:remote": "node scripts/assert-enterprise-account.mjs",
+    "migrate:remote": "CLOUDFLARE_ACCOUNT_ID=39f8ea10b94ad38470fc3c20c260efdc wrangler d1 migrations apply focairemover-jobs --remote",
+    "smoke": "node scripts/smoke.mjs"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "latest",
     "wrangler": "^4"
   }
 }

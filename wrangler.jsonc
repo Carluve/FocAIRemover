@@ -1,13 +1,12 @@
-// FocAIRemover — Workers config stub.
-// MVP: static UI from apps/web + Worker that serves assets and refuses /api/*.
-// v1+: uncomment containers + durable_objects + migrations; implement
-//      CleanerContainer in apps/worker (see docs/PLAN.md).
-// v1.5: uncomment r2_buckets (and optionally ai / ratelimits).
+// FocAIRemover — Workers config.
+// Cloudflare account: carluve @enterprise (NOT personal).
+// Enterprise: 39f8ea10b94ad38470fc3c20c260efdc
+// Do not use personal: 052a5feff6731a169b7012425b020cc5
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "focairemover",
   "main": "apps/worker/src/index.ts",
-  // Set this to today's date when implementing; keep it recent.
+  "account_id": "39f8ea10b94ad38470fc3c20c260efdc",
   "compatibility_date": "2026-09-04",
   "compatibility_flags": ["nodejs_compat"],
   "observability": {
@@ -15,31 +14,56 @@
     "head_sampling_rate": 1,
   },
   "assets": {
-    // Browser-first MVP: Layer A + image/AV metadata strip live here.
     "directory": "./apps/web",
     "binding": "ASSETS",
-    // Worker sees /api/* first; everything else falls through to the UI.
     "run_worker_first": true,
   },
   "vars": {
     "ENVIRONMENT": "development",
-    // Public UI origin for any future CORS allowlist. Never "*".
-    "ALLOWED_ORIGIN": "https://focairemover.example.workers.dev",
+    // Public origin allowlist for CORS. Same-origin (this Worker) is always allowed.
+    // Never "*".
+    "ALLOWED_ORIGIN": "https://focairemover.carluve.workers.dev",
+    "MAX_UPLOAD_BYTES": "33554432",
+    "CLEANER_TIMEOUT_MS": "55000",
   },
+  "r2_buckets": [
+    {
+      "binding": "FOCAI_FILES",
+      "bucket_name": "focairemover-files",
+    },
+  ],
+  "d1_databases": [
+    {
+      "binding": "JOBS",
+      "database_name": "focairemover-jobs",
+      "database_id": "d7d7154b-3a79-4bee-ae2f-c0f74e6b69aa",
+      "migrations_dir": "migrations",
+    },
+  ],
+  "ratelimits": [
+    {
+      "name": "RATE_LIMITER",
+      // Unique per this app on the enterprise account. Do not reuse 1001.
+      "namespace_id": "904201",
+      "simple": {
+        "limit": 30,
+        "period": 60,
+      },
+    },
+  ],
 
-  // --- v1: Cloudflare Containers wrapping the upstream cleaner image ---
-  // Each Container is backed by a Durable Object. Worker class MUST set
-  // defaultPort = 8765 (upstream EXPOSE + CMD bind 0.0.0.0:8765).
-  // Native GHCR pull is not in Cloudflare's pre-built image list; Wrangler
-  // builds containers/cleaner/Dockerfile (FROM ghcr.io/...) and pushes to
-  // the Cloudflare registry on `wrangler deploy`.
+  // Cloudflare Containers: wrangler deploy builds containers/cleaner/Dockerfile
+  // (FROM ghcr.io/guillaumemeyer/watermarks-remover) and pushes to the
+  // enterprise Cloudflare registry. Requires Docker locally for that deploy.
+  // Local `wrangler dev` without Docker: set CLEANER_URL in .dev.vars
+  // (docker compose up -f docker-compose.yml).
   //
+  // Uncomment to attach the container on deploy:
   // "containers": [
   //   {
   //     "class_name": "CleanerContainer",
   //     "image": "./containers/cleaner/Dockerfile",
   //     "max_instances": 3,
-  //     // lite is too small for ffmpeg/ghostscript/qpdf + Python; start at basic.
   //     "instance_type": "basic"
   //   }
   // ],
@@ -50,22 +74,5 @@
   // },
   // "migrations": [
   //   { "tag": "v1", "new_sqlite_classes": ["CleanerContainer"] }
-  // ],
-
-  // --- v1.5: large files via R2 (avoid buffering JSON+base64 in the Worker) ---
-  // "r2_buckets": [
-  //   { "binding": "UPLOADS", "bucket_name": "focairemover-uploads" }
-  // ],
-
-  // --- v1.5 optional: Workers AI for Layer B rewrite (non-Claude model) ---
-  // "ai": { "binding": "AI" },
-
-  // --- v1: Workers Rate Limiting (GA). Namespace id is account-local. ---
-  // "ratelimits": [
-  //   {
-  //     "name": "CLEAN_RATE_LIMITER",
-  //     "namespace_id": "1001",
-  //     "simple": { "limit": 20, "period": 60 }
-  //   }
   // ]
 }

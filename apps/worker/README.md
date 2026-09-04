@@ -1,20 +1,13 @@
-# `apps/worker` — proxy Worker
+# `apps/worker` — R2-backed API
 
-Placeholder Worker. MVP: sirve `apps/web` (Static Assets) y responde **501**
-en `/api/*` hasta que exista el contenedor.
+Worker on **carluve @enterprise** (`39f8ea10b94ad38470fc3c20c260efdc`).
 
-Placeholder Worker. MVP: serves `apps/web` (Static Assets) and returns **501**
-on `/api/*` until the container exists.
+- R2 `focairemover-files` → `env.FOCAI_FILES`
+- D1 `focairemover-jobs` → `env.JOBS`
+- Rate limit binding `RATE_LIMITER` (namespace `904201`)
 
-## v1
+Every upload is stored at `uploads/{jobId}/original` before `/clean`. Cleaned bytes go to `uploads/{jobId}/cleaned`. Download streams from R2.
 
-Implementar `CleanerContainer extends Container` (`@cloudflare/containers`):
+Cleaner seam: `CLEANER_URL` (docker compose) or Cloudflare Containers (`CleanerContainer`, port 8765). See [docs/DEPLOY.md](../../docs/DEPLOY.md).
 
-- `defaultPort = 8765`
-- `sleepAfter = "10m"`
-- `enableInternet = false` (el cleaner core no necesita salida)
-- Proxy same-origin: `GET/POST /api/health|capabilities|inspect|clean|…` → contenedor sin el prefijo `/api`
-- Límites de tamaño, rate limit, Bearer opcional, **sin CORS `*`**
-- No reenviar `Authorization` del navegador al contenedor si el Bearer es del Worker
-
-See [docs/PLAN.md](../../docs/PLAN.md).
+Do not add `Access-Control-Allow-Origin: *`.

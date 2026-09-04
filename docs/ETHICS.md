@@ -37,9 +37,9 @@ Process content **the user owns or is authorized to process**.
 
 ## Datos / Data
 
-Los datos **pueden guardarse** (uploads, logs, ficheros procesados, metadatos de uso) con fines de investigación u operación. **No** asumas borrado al instante. Solo el **MVP en el navegador** mantiene los **bytes del fichero** en la pestaña (sin upload al cleaner); igual puede haber logs de red al servir la página. Desde **v1**, el contenido **sale de tu máquina**. Tabla: [PLAN.md — Datos por fase](PLAN.md#datos-por-fase--data-by-phase).
+Los datos **pueden guardarse**. El MVP sube **cada fichero a R2** (`focairemover-files`, cuenta enterprise). Originales, cleaned e informes pueden retenerse. **No** asumas borrado al instante. Tabla: [PLAN.md — Datos por fase](PLAN.md#datos-por-fase--data-by-phase).
 
-**Data may be stored.** Do not assume instant deletion. Browser MVP keeps **file bytes** in the tab; from **v1**, content **leaves your machine**.
+**Data may be stored.** Every upload goes to R2 and **may be kept**.
 
 ## Honestidad en los informes / Honesty in reports
 

@@ -16,11 +16,11 @@ Nadie te debe un servicio. Nadie te debe un resultado «limpio». Nadie te debe 
 
 ## Datos: pueden guardarse
 
-**No asumas** que «todo se procesa en local y se borra al instante». Eso **solo** es cierto, y de forma limitada, para el **MVP en el navegador** respecto a los **bytes del fichero** (no se suben al servidor de limpieza). Incluso ahí hay logs de red. A partir de **v1**, el contenido **sale de tu máquina**.
+**No asumas** que «todo se procesa en local y se borra al instante». **El MVP guarda cada fichero en R2** (original + cleaned + informe) en el bucket `focairemover-files` de la cuenta enterprise. Los logs de Worker/CDN también pueden persistirse.
 
 El autor y quien opere una instancia **pueden guardar** uploads, copias de ficheros procesados, informes de inspección, prompts de reescritura, logs, direcciones IP, User-Agent, marcas de tiempo, tamaños, tipos MIME y **cualquier otro metadato de uso**, con fines de **investigación**, depuración u operación. **No hay promesa de TTL, de anonimato, de no reutilizar ni de borrado a petición.**
 
-Detalle por fase: [PLAN.md — Datos por fase](PLAN.md#datos-por-fase--data-by-phase). Si no quieres que un tercero vea o conserve tu contenido, **no uses v1 ni v1.5** y no subas nada.
+Detalle por fase: [PLAN.md — Datos por fase](PLAN.md#datos-por-fase--data-by-phase). Si no quieres que un tercero vea o conserve tu contenido, **no subas nada**.
 
 ---
 
@@ -50,4 +50,4 @@ Texto de licencia MIT: [LICENSE](../LICENSE). La licencia **no** anula este desc
 
 ## English (short)
 
-FocAIRemover is a **research / experimental** project, **not** a commercial product or a guaranteed service. **Data may be stored** (uploads, processed files, logs, usage metadata) for research or operations — do **not** assume local-only, instant deletion except for file bytes in the browser-only MVP (network logs still exist; from **v1** content leaves your machine). The author and the project **accept no responsibility whatsoever** for cleaning results, leftover-detectable watermarks, your use of the tool, damages, losses, academic or legal sanctions, or service failures. The software is provided **AS IS**, with **no warranties**. Full text above in Spanish.
+FocAIRemover is a **research / experimental** project, **not** a commercial product or a guaranteed service. **Every uploaded file is stored in R2** (originals, cleaned outputs, reports) and **may be kept** for research or operations. The author and the project **accept no responsibility whatsoever** for cleaning results, leftover-detectable watermarks, your use of the tool, damages, losses, academic or legal sanctions, or service failures. The software is provided **AS IS**, with **no warranties**. Full text above in Spanish.

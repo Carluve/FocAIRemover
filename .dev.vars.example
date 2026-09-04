@@ -1,11 +1,11 @@
 # Local secrets for `wrangler dev`. Copy to `.dev.vars` (gitignored).
 # Never commit real keys.
 
-# Optional bearer token the Worker will require on /api/* (v1+).
-# CLEANER_API_KEY=
+# Optional: require Authorization: Bearer <this> on /api (except /api/health).
+# API_KEY=
 
-# Optional OpenAI-compatible rewrite backend (v1.5 Layer B). Never Claude
-# for Claude-origin text. Prefer a non-origin model.
-# REWRITE_BASE_URL=https://api.example.com
-# REWRITE_MODEL=some-open-model
-# REWRITE_API_KEY=
+# Local watermarks-remover HTTP service (docker compose).
+CLEANER_URL=http://127.0.0.1:8765
+
+# Optional bearer the Worker sends to the cleaner (WATERMARKS_SERVER_API_KEY).
+# WATERMARKS_SERVER_API_KEY=

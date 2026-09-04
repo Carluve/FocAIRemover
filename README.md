@@ -6,9 +6,9 @@ Investigación sobre marcas de procedencia de IA (Unicode invisible, C2PA/EXIF/X
 
 This is a **research / experimental** project, **not** a commercial product or a guaranteed service. **Data may be stored.** The author **accepts no responsibility whatsoever.** Full disclaimer (Spanish, binding): [docs/DISCLAIMER.md](docs/DISCLAIMER.md).
 
-**Estado: planificación / andamiaje.** Arquitectura: [docs/PLAN.md](docs/PLAN.md). El motor de limpieza aún no está conectado. PDF/DOCX de servidor = **v1**.
+**Estado: MVP R2-backed (implementado).** Cuenta Cloudflare **enterprise** `39f8ea10b94ad38470fc3c20c260efdc`. Bucket R2 `focairemover-files`. Deploy: [docs/DEPLOY.md](docs/DEPLOY.md). Arquitectura: [docs/PLAN.md](docs/PLAN.md).
 
-**Status: planning / scaffold.** Browser cleaning is not wired yet. Server-side PDF/DOCX lands in **v1**.
+**Status: R2-backed MVP.** Enterprise Cloudflare account only (not personal). Every uploaded file is stored in R2.
 
 ## Honesty constraints / Restricciones de honestidad
 
@@ -27,15 +27,15 @@ El diseño se basa en el upstream con más estrellas. Inspiración de UI: unmark
 
 ## Datos: pueden guardarse / Data may be stored
 
-**No asumas procesamiento 100 % local ni borrado al instante**, salvo los **bytes del fichero en el MVP del navegador** (no hay upload al cleaner; sí puede haber logs de CDN/Worker: IP, URL, User-Agent).
+**No asumas procesamiento local ni borrado al instante.** El camino principal sube **todos** los ficheros a R2.
 
 | Fase | ¿El fichero sale de tu máquina? | Qué puede persistirse |
 | --- | --- | --- |
-| **MVP (navegador)** | No (bytes del archivo se quedan en la pestaña) | Logs de petición al servir la página; analítica de Cloudflare/Workers si está activa |
-| **v1 (Worker + contenedor)** | **Sí** — subes a `/api` | Uploads, salidas, informes, logs, IP y metadatos de uso, **copias para investigación**. Sin promesa de TTL ni de borrado |
-| **v1.5 (R2 + Capa B)** | **Sí** | Objetos en R2, reescrituras enviadas a un modelo, logs. Igual: pueden guardarse para investigación / operación |
+| **MVP actual (R2 + Worker)** | **Sí** — `POST /api/upload` | Original, cleaned, `report.json`, metadatos D1, logs, IP. Bucket `focairemover-files`. **Sin promesa de TTL ni de borrado** |
+| **Containers / CLEANER_URL** | Sí | Igual + lo que vea el proceso cleaner (tmp efímero no es garantía) |
+| **Capa B (opcional, más adelante)** | Sí | Texto enviado a un modelo de terceros, más copias R2 |
 
-Detalle: [docs/PLAN.md](docs/PLAN.md#datos-por-fase--data-by-phase) · descargo: [docs/DISCLAIMER.md](docs/DISCLAIMER.md).
+Detalle: [docs/PLAN.md](docs/PLAN.md#datos-por-fase--data-by-phase) · descargo: [docs/DISCLAIMER.md](docs/DISCLAIMER.md) · deploy: [docs/DEPLOY.md](docs/DEPLOY.md).
 
 ## Descargo / Disclaimer
 
@@ -47,48 +47,38 @@ The author and the project **accept no responsibility whatsoever** for cleaning 
 
 | Phase | What | Host |
 | --- | --- | --- |
-| **MVP** | Drag-drop; Layer A + image/AV metadata in the **browser**; file bytes not uploaded (page request logs may still exist) | Workers Static Assets |
-| **v1** | PDF / DOCX / full `/clean` | Worker proxy → Cloudflare Container (`ghcr.io/guillaumemeyer/watermarks-remover` on port **8765**) |
-| **v1.5** | Large files; Layer B rewrite | R2 + non-Claude OpenAI-compatible API / Workers AI |
-| **Out of scope** | Pixel SynthID / CtrlRegen (GPU); official Anthropic detector | — |
+| **MVP (now)** | Drag-drop → R2 original → job → watermarks-remover `/clean` → R2 cleaned → download | Workers + R2 `focairemover-files` + D1 `focairemover-jobs` on **enterprise** |
+| **Containers** | Same `/clean` inside Cloudflare Containers (port 8765) | Uncomment wrangler containers; see DEPLOY.md |
+| **Later** | Layer B rewrite (non-Claude); larger files | Optional Workers AI / OpenAI-compatible |
+| **Out of scope** | Pixel SynthID / CtrlRegen (GPU); official Anthropic detector; guaranteed undetectability | — |
 
 ## Repository layout / Estructura
 
 ```
-apps/web/              static UI (drag-drop stub)
-apps/worker/           Worker proxy stub (501 on /api until v1)
-containers/cleaner/    Dockerfile FROM ghcr.io/guillaumemeyer/watermarks-remover:latest
+apps/web/              drag-drop UI → /api/upload → poll → download
+apps/worker/           R2 + D1 job API
+containers/cleaner/    Dockerfile FROM ghcr.io/guillaumemeyer/watermarks-remover
+migrations/            D1 schema
+docs/DEPLOY.md         enterprise account + R2/D1
 docs/PLAN.md           architecture (ES+EN)
 docs/DISCLAIMER.md     research + data + liability (binding)
-docs/ETHICS.md         intended use
-docs/TOS.md            draft terms
-NOTICE                 MIT attribution for derived work
-wrangler.jsonc         Workers + commented Containers / R2
+wrangler.jsonc         account_id enterprise, FOCAI_FILES, JOBS, rate limit
 ```
 
-## How to run later / Cómo ejecutar después
+## How to run / Cómo ejecutar
 
-Hoy / today (scaffold only — placeholder page, `/api` returns 501):
+Cuenta enterprise only. See [docs/DEPLOY.md](docs/DEPLOY.md).
 
 ```bash
+cp .dev.vars.example .dev.vars
 npm install
-npx wrangler dev
-# http://127.0.0.1:8787
+npx wrangler d1 migrations apply focairemover-jobs --local
+docker compose up --build -d    # optional cleaner
+npx wrangler dev                # http://127.0.0.1:8787
+npm test
 ```
 
-MVP (next implementation): same command, once JS engines live under `apps/web`. No Docker.
-
-v1 — local upstream API (optional, not vendored):
-
-```bash
-docker build -t focairemover-cleaner -f containers/cleaner/Dockerfile containers/cleaner
-docker run --rm -p 127.0.0.1:8765:8765 --read-only --tmpfs /tmp focairemover-cleaner
-curl -s http://127.0.0.1:8765/health
-```
-
-v1 — Cloudflare: uncomment the `containers` block in `wrangler.jsonc`, implement `CleanerContainer` (`defaultPort = 8765`), then `npm run deploy`. Paid Workers plan required for Containers.
-
-Secrets: copy `.dev.vars.example` → `.dev.vars`. Production: `npx wrangler secret put CLEANER_API_KEY`.
+Production (enterprise only): `npm run deploy`. That script sets `CLOUDFLARE_ACCOUNT_ID=39f8ea10b94ad38470fc3c20c260efdc` and refuses the personal account. Secrets: `npx wrangler secret put API_KEY`. Full steps: [docs/DEPLOY.md](docs/DEPLOY.md).
 
 ## Attribution / Atribución
 

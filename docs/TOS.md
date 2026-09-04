@@ -13,9 +13,9 @@ Status: **draft**. Not legal advice. Binding disclaimer: [DISCLAIMER.md](DISCLAI
 3. **Sin garantías de indetectabilidad.** La Capa A y el strip de metadatos son verificables a nivel técnico. Las marcas estadísticas (Claude/Anthropic, Kirchenbauer, SynthID-Text) **no** se certifican como eliminadas. Nunca «Anthropic watermark guaranteed removed». Un informe «limpio» no te protege ante un detector, una universidad o un tribunal.
    **No undetectability warranty.** Never “Anthropic watermark guaranteed removed”.
 4. **Datos: pueden guardarse.** No asumas «todo local y se borra al instante».
-   - **MVP navegador:** los **bytes del fichero** no se suben al cleaner; se quedan en la pestaña. Los **logs** de servir la página (IP, URL, User-Agent, etc.) **sí pueden** persistirse.
-   - **v1:** el fichero **se sube** al Worker/contenedor. Uploads, salidas, informes, logs y metadatos de uso **pueden** guardarse para investigación u operación. El disco efímero del contenedor **no** es una promesa de no retención.
-   - **v1.5:** R2 y el proveedor del modelo de Capa B **pueden** retener ficheros o texto. Un TTL, si existe, no es un derecho del usuario.
+   - **MVP R2:** cada upload va a `focairemover-files` (`uploads/{jobId}/original`, `cleaned`, `report.json`) más la fila D1. **Pueden** retenerse para investigación u operación.
+   - **Cleaner (Container o CLEANER_URL):** el fichero se envía a `/clean`. El tmp del contenedor no es una promesa de no retención.
+   - **Capa B futura:** R2 y el proveedor del modelo **pueden** retener texto. Un TTL, si existe, no es un derecho del usuario.
    Tabla: [PLAN.md — Datos por fase](PLAN.md#datos-por-fase--data-by-phase).
 5. **Descargo.** El autor y el proyecto no responden del limpieado, de watermarks residuales, de tu uso, de daños, pérdidas, sanciones ni de fallos. Software **AS IS**. [DISCLAIMER.md](DISCLAIMER.md).
    **Disclaimer.** No liability. **AS IS.**

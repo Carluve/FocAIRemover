@@ -9,5 +9,5 @@
     "skipLibCheck": true,
     "types": ["@cloudflare/workers-types"]
   },
-  "include": ["apps/worker/src/**/*.ts"]
+  "include": ["apps/worker/src/**/*.ts", "worker-configuration.d.ts", "tests/**/*.ts"]
 }
