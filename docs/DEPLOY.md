@@ -31,7 +31,24 @@ npx wrangler d1 migrations apply focairemover-jobs --remote
 
 Already applied (`0001_jobs.sql`). Safe to re-run; Wrangler skips applied migrations.
 
-## 4. Secrets (optional)
+## 4. Access control — decide before you deploy
+
+`/api/upload` and `/api/jobs` are gated by **one** of two modes. There is no third,
+"whatever happens" mode: an unset `API_KEY` with `PUBLIC_UPLOADS` off returns
+**503 `server_misconfigured`** rather than serving the API openly.
+
+| Mode | Config | Who can upload |
+| --- | --- | --- |
+| **Public** (default) | `PUBLIC_UPLOADS: "true"` in `wrangler.jsonc`, no `API_KEY` | **Anyone on the internet.** Only the rate limiter (30 req/60s per IP) stands in the way. This is what the bundled drag-drop UI needs — a browser page cannot hold a secret. |
+| **API clients only** | `PUBLIC_UPLOADS: "false"` + `wrangler secret put API_KEY` | Bearer-token holders. The bundled UI **stops working**; it never sends an `Authorization` header. |
+
+Confirm which one you shipped: `GET /api/health` reports `auth` as `bearer`,
+`public`, or `misconfigured`.
+
+Public mode means strangers spend your enterprise R2 and cleaner capacity, and
+every uploaded file is retained. If you want the public UI *and* a brake on
+automated abuse, put [Turnstile](https://developers.cloudflare.com/turnstile/)
+in front of `/api/upload` — that is the missing piece, not a longer API key.
 
 ```bash
 npx wrangler secret put API_KEY                     # Bearer on /api except /health
@@ -39,7 +56,25 @@ npx wrangler secret put WATERMARKS_SERVER_API_KEY   # Worker → cleaner
 npx wrangler secret put CLEANER_URL                 # only if cleaner is not a Container
 ```
 
-No secrets are required for a first deploy. Without `CLEANER_URL` / Containers, uploads still go to R2; jobs end in `error` (`cleaner_unreachable`). That is intentional.
+Without `CLEANER_URL` / Containers, uploads still go to R2; jobs end in `error` (`cleaner_unreachable`). That is intentional.
+
+## 4b. Queues (durable job processing) — strongly recommended
+
+Unbound, the Worker cleans inside `ctx.waitUntil()`. That budget dies with the
+isolate: a job can be stranded in `processing` with nothing to re-drive it
+except the UI's retry button. Queues gives it durable retries and a
+dead-letter queue.
+
+```bash
+export CLOUDFLARE_ACCOUNT_ID=39f8ea10b94ad38470fc3c20c260efdc
+npx wrangler queues create focairemover-clean-dlq
+npx wrangler queues create focairemover-clean
+```
+
+Then uncomment the `queues` block in `wrangler.jsonc` and redeploy. The Worker
+code already handles both paths; `GET /api/health` reports `queue` as `queue`
+or `waitUntil`. Create the queues **before** uncommenting, or `wrangler deploy`
+will fail on the missing queue.
 
 ## 5. Deploy the Worker
 
@@ -75,7 +110,16 @@ npx wrangler d1 migrations apply focairemover-jobs --local
 docker compose up --build -d    # optional, 127.0.0.1:8765
 npx wrangler dev
 npm test
+npm run typecheck
 node scripts/smoke.mjs
 ```
+
+## Limits
+
+`MAX_UPLOAD_BYTES` is **8 MiB**. The cleaner contract is base64-in-JSON, so an
+N-byte upload costs roughly 3.7N of isolate memory (raw bytes + base64 string +
+the JSON envelope) against the Worker's 128 MB ceiling. The previous 32 MiB cap
+peaked near 118 MB. Raising it again needs a streaming or multipart cleaner
+contract, not just a bigger number.
 
 Objects in `focairemover-files` **may be kept**. See [DISCLAIMER.md](DISCLAIMER.md).

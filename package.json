@@ -10,6 +10,7 @@
     "predeploy": "node scripts/assert-enterprise-account.mjs",
     "deploy": "CLOUDFLARE_ACCOUNT_ID=39f8ea10b94ad38470fc3c20c260efdc wrangler deploy",
     "types": "wrangler types",
+    "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
     "migrate:local": "wrangler d1 migrations apply focairemover-jobs --local",
     "premigrate:remote": "node scripts/assert-enterprise-account.mjs",
@@ -18,6 +19,7 @@
   },
   "devDependencies": {
     "@types/node": "^26.4.1",
+    "typescript": "^7.0.2",
     "wrangler": "^4"
   }
 }

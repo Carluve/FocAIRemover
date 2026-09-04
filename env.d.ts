@@ -5,4 +5,8 @@ interface Env {
   CLEANER_URL?: string;
   WATERMARKS_SERVER_API_KEY?: string;
   CLEANER?: DurableObjectNamespace;
+  // PUBLIC_UPLOADS is a wrangler.jsonc var, so `wrangler types` generates it
+  // as a string literal ("true" / "false"). Declaring it here too would clash.
+  /** Bound once the `queues` block in wrangler.jsonc is enabled. */
+  CLEAN_QUEUE?: Queue<{ jobId: string }>;
 }

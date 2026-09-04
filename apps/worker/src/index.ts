@@ -12,6 +12,7 @@
 import { cleanerHealth } from "./cleaner";
 import {
   allowCorsOrigin,
+  callerFingerprint,
   clientError,
   clientIp,
   json,
@@ -24,6 +25,18 @@ import { claimJob, getJob, getJobByIdempotency, insertJob, publicJob } from "./j
 import { JOB_ID_RE, r2CleanedKey, r2MetaKey, r2OriginalKey } from "./keys";
 import { processJob } from "./process";
 import { ValidationError, assertAllowedFile, parseMaxBytes, sanitizeDownloadName } from "./validate";
+
+/** Queue message body. Only the id travels — bytes stay in R2. */
+export type CleanMessage = { jobId: string };
+
+/**
+ * Anonymous API access must be opted into explicitly; never the silent default.
+ * String() because `wrangler types` types this var as a string *literal*, and a
+ * literal comparison stops compiling the moment the value is flipped.
+ */
+function allowsAnonymous(env: Env): boolean {
+  return String(env.PUBLIC_UPLOADS) === "true";
+}
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -44,7 +57,34 @@ export default {
 
     return env.ASSETS.fetch(request);
   },
-} satisfies ExportedHandler<Env>;
+
+  /**
+   * Durable job processing. Queues owns retries and the dead-letter path, so a
+   * job survives isolate eviction — unlike the ctx.waitUntil() fallback below.
+   */
+  async queue(batch: MessageBatch<CleanMessage>, env: Env): Promise<void> {
+    for (const message of batch.messages) {
+      const jobId = message.body?.jobId;
+      if (!jobId || !JOB_ID_RE.test(jobId)) {
+        logEvent({ msg: "queue_bad_message", id: message.id });
+        message.ack();
+        continue;
+      }
+      try {
+        const outcome = await runJob(env, jobId);
+        if (outcome === "retry") message.retry();
+        else message.ack();
+      } catch (err) {
+        logEvent({
+          msg: "queue_unhandled",
+          jobId,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        message.retry();
+      }
+    }
+  },
+} satisfies ExportedHandler<Env, CleanMessage>;
 
 // When enabling Cloudflare Containers, also export:
 // export { CleanerContainer } from "./container";
@@ -55,7 +95,7 @@ async function handleApi(
   ctx: ExecutionContext,
   url: URL,
 ): Promise<Response> {
-  const authErr = requireBearer(request, env.API_KEY);
+  const authErr = requireBearer(request, env.API_KEY, { allowAnonymous: allowsAnonymous(env) });
   if (authErr && url.pathname !== "/api/health") {
     return authErr;
   }
@@ -104,7 +144,9 @@ async function rateLimited(
   if (limiter) {
     const { success } = await limiter.limit({ key: `ip:${clientIp(request)}` });
     if (!success) {
-      return json({ ok: false, error: "rate_limited", message: "too many requests" }, 429);
+      return json({ ok: false, error: "rate_limited", message: "too many requests" }, 429, {
+        "retry-after": "60",
+      });
     }
   }
   return next();
@@ -119,6 +161,9 @@ async function health(env: Env): Promise<Response> {
     r2: "focairemover-files",
     cleaner: cleaner.ok ? "up" : "down",
     cleanerDetail: cleaner.detail,
+    // Make the security posture readable from outside instead of guessable.
+    auth: env.API_KEY?.trim() ? "bearer" : allowsAnonymous(env) ? "public" : "misconfigured",
+    queue: env.CLEAN_QUEUE ? "queue" : "waitUntil",
     disclaimer:
       "Research/experimental. Files in R2 may be kept. No guaranteed watermark removal. AS IS.",
   });
@@ -145,7 +190,13 @@ async function upload(request: Request, env: Env, ctx: ExecutionContext): Promis
   const filename = file.name || "upload.bin";
   const { extension } = assertAllowedFile(filename, file.type || null, file.size, maxBytes);
 
-  const idempotencyKey = request.headers.get("idempotency-key")?.trim() || null;
+  // Scope the idempotency key to the caller. A bare key is attacker-chosen, so
+  // an unscoped lookup would hand a replay of someone else's job — original
+  // filename and download URL included — to anyone guessing a common value.
+  const rawIdempotencyKey = request.headers.get("idempotency-key")?.trim() || null;
+  const idempotencyKey = rawIdempotencyKey
+    ? `${await callerFingerprint(request, env.API_KEY)}:${rawIdempotencyKey}`
+    : null;
   if (idempotencyKey) {
     const existing = await getJobByIdempotency(env.JOBS, idempotencyKey);
     if (existing) {
@@ -168,13 +219,15 @@ async function upload(request: Request, env: Env, ctx: ExecutionContext): Promis
     storedAt: Date.now(),
   };
 
-  await env.FOCAI_FILES.put(r2OriginalKey(jobId), bytes, {
-    httpMetadata: { contentType: file.type || "application/octet-stream" },
-    customMetadata: { jobId, originalName: filename, extension },
-  });
-  await env.FOCAI_FILES.put(r2MetaKey(jobId), JSON.stringify(meta), {
-    httpMetadata: { contentType: "application/json" },
-  });
+  await Promise.all([
+    env.FOCAI_FILES.put(r2OriginalKey(jobId), bytes, {
+      httpMetadata: { contentType: file.type || "application/octet-stream" },
+      customMetadata: { jobId, originalName: filename, extension },
+    }),
+    env.FOCAI_FILES.put(r2MetaKey(jobId), JSON.stringify(meta), {
+      httpMetadata: { contentType: "application/json" },
+    }),
+  ]);
 
   try {
     await insertJob(env.JOBS, {
@@ -195,7 +248,7 @@ async function upload(request: Request, env: Env, ctx: ExecutionContext): Promis
   }
 
   logEvent({ msg: "upload_stored", jobId, size: bytes.byteLength, extension });
-  ctx.waitUntil(kickOff(env, jobId));
+  await enqueue(env, ctx, jobId);
   const row = await getJob(env.JOBS, jobId);
   return json(row ? publicJob(row) : { ok: true, id: jobId, status: "queued" }, 202);
 }
@@ -215,17 +268,31 @@ async function startJob(request: Request, env: Env, ctx: ExecutionContext): Prom
   if (!row) return clientError("not_found", "job not found", 404);
   if (row.status === "done") return json(publicJob(row), 200);
 
-  ctx.waitUntil(kickOff(env, jobId));
+  await enqueue(env, ctx, jobId);
   return json({ ...publicJob(row), status: row.status === "processing" ? "processing" : "queued" }, 202);
 }
 
-async function kickOff(env: Env, jobId: string): Promise<void> {
-  const claimed = await claimJob(env.JOBS, jobId);
-  if (!claimed) {
-    logEvent({ msg: "job_not_claimed", jobId });
+/**
+ * Hand the job to Queues when the binding exists. The ctx.waitUntil() path is
+ * only a local/unbound fallback: it dies with the isolate and leaves the job
+ * stuck in `processing` until STALE_PROCESSING_MS lets someone re-claim it.
+ */
+async function enqueue(env: Env, ctx: ExecutionContext, jobId: string): Promise<void> {
+  if (env.CLEAN_QUEUE) {
+    await env.CLEAN_QUEUE.send({ jobId });
     return;
   }
-  await processJob(env, jobId);
+  ctx.waitUntil(runJob(env, jobId));
+}
+
+async function runJob(env: Env, jobId: string): Promise<"done" | "error" | "retry"> {
+  const claimed = await claimJob(env.JOBS, jobId);
+  if (!claimed) {
+    // Another consumer holds it. Ack rather than pile on a duplicate run.
+    logEvent({ msg: "job_not_claimed", jobId });
+    return "done";
+  }
+  return processJob(env, jobId);
 }
 
 async function jobStatus(env: Env, jobId: string): Promise<Response> {

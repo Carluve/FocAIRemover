@@ -6,6 +6,9 @@
     "lib": ["ES2022"],
     "strict": true,
     "noEmit": true,
+    // Tests run through `node --experimental-strip-types`, which requires the
+    // explicit .ts extension on relative imports.
+    "allowImportingTsExtensions": true,
     "skipLibCheck": true,
     "types": ["node"]
   },

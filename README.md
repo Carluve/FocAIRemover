@@ -76,7 +76,10 @@ npx wrangler d1 migrations apply focairemover-jobs --local
 docker compose up --build -d    # optional cleaner
 npx wrangler dev                # http://127.0.0.1:8787
 npm test
+npm run typecheck
 ```
+
+Uploads are capped at **8 MiB** (`MAX_UPLOAD_BYTES`) — see [docs/DEPLOY.md](docs/DEPLOY.md#limits). Before deploying, pick an access mode: the default serves `/api` **publicly**, see [docs/DEPLOY.md](docs/DEPLOY.md#4-access-control--decide-before-you-deploy).
 
 Production (enterprise only): see the exact checklist in [docs/DEPLOY.md](docs/DEPLOY.md) — enable R2 if needed (error **10042** means you are on the personal account), create `focairemover-files` if missing, optional secrets, `npm run deploy`. That script sets `CLOUDFLARE_ACCOUNT_ID=39f8ea10b94ad38470fc3c20c260efdc` and refuses the personal account.
 
