@@ -1,8 +1,12 @@
 # Plan de arquitectura — FocAIRemover
 # Architecture plan — FocAIRemover
 
-Estado / Status: **planificación + andamiaje** (este PR). El MVP de limpieza en el navegador aún no está implementado.
-This PR is **planning + scaffold**. Browser cleaning is not implemented yet.
+**Naturaleza:** FocAIRemover es un **proyecto de investigación / experimental**. No es un producto comercial ni un servicio garantizado. Descargo vinculante: [DISCLAIMER.md](DISCLAIMER.md).
+
+**Nature:** research / experimental — **not** a commercial product or a guaranteed service. Binding disclaimer: [DISCLAIMER.md](DISCLAIMER.md).
+
+Estado / Status: **planificación + andamiaje**. El MVP de limpieza en el navegador aún no está implementado.
+This is **planning + scaffold**. Browser cleaning is not implemented yet.
 
 Documento pensado para que el **siguiente agente implemente el MVP sin reinvestigar el upstream**.
 Written so the **next agent can implement the MVP without re-researching upstream**.
@@ -28,6 +32,9 @@ These sentences must appear in the UI, README, and any marketing. Non-negotiable
 | Las **marcas estadísticas de texto** (muestreo de tokens de Claude/Anthropic, Kirchenbauer/KGW, SynthID-Text) **solo se debilitan** con reescritura pesada (**Capa B**). Es **mejor esfuerzo**, **no certificable**, hasta que Anthropic publique un detector público. | **Statistical text watermarks** (Claude/Anthropic token-sampling, Kirchenbauer/KGW, SynthID-Text) are **ONLY weakened** by heavy rewrite (**Layer B**) — **best-effort**, **NOT certifiable** until Anthropic ships a public detector. |
 | **Nunca** afirmar: «marca de agua de Anthropic garantizada como eliminada». | **Never** claim **“Anthropic watermark guaranteed removed”**. |
 | Ética: contenido que el usuario **posee o está autorizado a procesar**. No fraude académico ni teatro de «escrito por un humano». | Ethics: content the user **owns / is authorized to process**; not academic fraud. |
+| Es un **proyecto de investigación**, no un producto ni un servicio con SLA. | This is a **research project**, not a product or an SLA service. |
+| Los **datos pueden guardarse** (uploads, logs, copias, metadatos de uso) salvo los bytes del fichero en el MVP del navegador. | **Data may be stored** (uploads, logs, copies, usage metadata) except file bytes in the browser MVP. |
+| El autor **no se hace responsable de nada**. Software «tal cual» / AS IS. Ver [DISCLAIMER.md](DISCLAIMER.md). | The author **accepts no responsibility whatsoever**. AS IS. See [DISCLAIMER.md](DISCLAIMER.md). |
 | Conservar atribución MIT / `NOTICE` del trabajo derivado de watermarks-remover. | Preserve MIT attribution / `NOTICE` for derived work from watermarks-remover. |
 
 Un informe de limpio **no** significa «nunca hubo IA» ni «indetectable ante un detector de proveedor».
@@ -140,16 +147,19 @@ Píxeles **intocados** en MVP. `remove_pixel` (CtrlRegen / diffusion) = fuera de
 MVP (sin contenedor)
   Navegador ── Layer A + image/AV strip ── descarga local
   Worker ── Static Assets (apps/web) + 501 en /api/*
+  Datos: bytes del fichero en la pestaña; logs de red/CDN/Worker posibles
 
 v1
   Navegador ── same-origin /api/* ── Worker (límites, auth, rate limit)
                                    └── Container defaultPort 8765
                                        ghcr.io/guillaumemeyer/watermarks-remover
                                        GET /health  POST /inspect  POST /clean
+  Datos: el fichero SALE de la máquina. Uploads/logs/copias PUEDEN persistirse.
 
 v1.5
   + R2 para ficheros grandes (no buffer JSON+base64 en el isolate de 128 MiB)
   + Capa B vía API OpenAI-compatible no-Claude o Workers AI
+  Datos: objetos en R2 y texto enviado al modelo PUEDEN persistirse.
 ```
 
 ### MVP — UI estática + todo en el navegador / Static UI + browser-side clean
@@ -200,8 +210,8 @@ export class CleanerContainer extends Container {
 
 ### v1.5 opcional — R2 + Capa B
 
-- **R2:** PUT directo (URL prefirmada o Worker stream) → contenedor lee el objeto → PUT resultado → descarga. TTL corto (p.ej. 15 min). No usar el bucket como almacenamiento de usuario.
-- **Capa B:** `WATERMARKS_REWRITE_BACKEND=openai-compatible` + `WATERMARKS_REWRITE_ALLOW_REMOTE=1` **o** el Worker llama a Workers AI / un endpoint propio y no usa `/clean` de texto del contenedor. UI: «mejor esfuerzo / no certificable». Modelo ≠ origen.
+- **R2:** PUT (URL prefirmada o stream del Worker) → el contenedor lee → PUT resultado → descarga. El bucket **puede** retener objetos para investigación u operación. Un TTL operativo, si se configura, **no** es una garantía al usuario ni impide copias fuera de R2.
+- **Capa B:** `WATERMARKS_REWRITE_BACKEND=openai-compatible` + `WATERMARKS_REWRITE_ALLOW_REMOTE=1` **o** el Worker llama a Workers AI / un endpoint propio. El texto reescrito **se envía a un tercero** (proveedor del modelo). UI: «mejor esfuerzo / no certificable». Modelo ≠ origen.
 - No Claude para texto sospechoso de Claude.
 
 ### Fuera de alcance inicial / Out of scope initially
@@ -264,6 +274,24 @@ curl -s -X POST "$WM/clean" -H 'Content-Type: application/json' \
 
 ---
 
+## Datos por fase / Data by phase
+
+**Regla:** los datos **pueden guardarse**. No documentar «se borra al instante» ni «nunca sale de tu PC» salvo donde sea **técnicamente cierto** (bytes del fichero en el MVP del navegador). Investigación / operación **pueden** conservar copias. Texto vinculante: [DISCLAIMER.md](DISCLAIMER.md).
+
+**Rule:** **data may be stored.** Do not document “deleted instantly” or “never leaves your PC” except where that is **technically true** (file bytes in the browser MVP). Research / operations **may** keep copies.
+
+| Fase | Bytes del fichero del usuario | Logs y metadatos de uso | Copias para investigación |
+| --- | --- | --- | --- |
+| **MVP (navegador)** | Se quedan en la pestaña. No hay `POST` al cleaner. La descarga es local. | **Sí, posibles:** Cloudflare/Workers al servir HTML/JS (IP, URL, User-Agent, `cf-ray`, estado). `observability` está previsto en `wrangler.jsonc`. | No hay upload que archivar. Los logs de petición **sí** pueden conservarse. |
+| **v1 (Worker + contenedor)** | **Salen de la máquina.** JSON+base64 (o stream) hacia el Worker y el contenedor en 8765. Disco del contenedor efímero **no** equivale a «no se guarda»: el Worker puede loguear, un operador puede persistir body o informe. | **Sí:** talla, `kind`, códigos, IP, timestamps, errores. No hay compromiso de no loguear el contenido. | **Sí, permitido.** Uploads, `cleaned`, `report` y metadatos **pueden** archivarse. Sin SLA de borrado ni de acceso del usuario a «borrar mis datos». |
+| **v1.5 (R2 + Capa B)** | **Salen de la máquina** y además pueden vivir en un bucket R2. | Igual que v1, más eventos de objeto (PUT/GET/DELETE). | **Sí.** R2 y el proveedor del modelo de reescritura (Workers AI u OpenAI-compatible) pueden retener texto o ficheros según *su* política, más copias del proyecto. |
+
+Implementación: la UI debe decir esto **antes** del primer `/clean` de servidor (checkbox o banner, no un footnote). El MVP debe decir que los bytes no se suben **y** que igual hay logs de la página.
+
+Do **not** restore the old TOS line that claimed v1 is ephemeral-only except R2.
+
+---
+
 ## 5. Seguridad / Security
 
 | Control | MVP | v1 |
@@ -272,10 +300,10 @@ curl -s -X POST "$WM/clean" -H 'Content-Type: application/json' \
 | Rate limit | N/A | Workers Rate Limiting GA (`ratelimits` en wrangler), p.ej. 20 req/min/IP en `/api/clean` |
 | CORS | N/A (todo local) | Lista de orígenes (`ALLOWED_ORIGIN`). **Nunca `*`** en el API del cleaner |
 | Auth | N/A | Bearer opcional `CLEANER_API_KEY` en el Worker; opcionalmente `WATERMARKS_SERVER_API_KEY` dentro del contenedor |
-| ToS / ética | UI + [ETHICS.md](ETHICS.md) + [TOS.md](TOS.md) | Checkbox o banner persistente antes del primer `/clean` de servidor |
-| Aislamiento | JS en el tab | `enableInternet = false`; usuario `remover` uid 10001 (imagen); disco efímero |
+| ToS / ética / descargo | UI + [ETHICS.md](ETHICS.md) + [TOS.md](TOS.md) + [DISCLAIMER.md](DISCLAIMER.md) | Banner de investigación + datos + descargo **antes** del primer `/clean` de servidor |
+| Aislamiento | JS en el tab (fichero no sube) | `enableInternet = false`; uid 10001. Disco efímero **no** implica no retención |
 | Secretos | — | `.dev.vars` local; `wrangler secret put` en prod. Nunca en `wrangler.jsonc` |
-| Informe | No loguear contenido ni base64 | Logs estructurados: talla, `kind`, códigos; no el fichero |
+| Datos / logs | Logs de petición al servir estáticos | Uploads y metadatos **pueden** persistirse (investigación / operación). Ver [Datos por fase](#datos-por-fase--data-by-phase) |
 
 `MAX_BODY_BYTES` upstream = `MAX_INPUT_BYTES + MAX_INPUT_BYTES/2` (overhead base64). El Worker debe rechazar `Content-Length` por encima **antes** de leer el body.
 
@@ -286,7 +314,7 @@ curl -s -X POST "$WM/clean" -H 'Content-Type: application/json' \
 ### Ya hecho en este PR / Done in this PR
 
 - [x] `docs/PLAN.md` (este archivo)
-- [x] README + NOTICE + LICENSE MIT + ETHICS + TOS
+- [x] README + NOTICE + LICENSE MIT + ETHICS + TOS + DISCLAIMER
 - [x] `apps/web` stub + `apps/worker` stub + `containers/cleaner/Dockerfile`
 - [x] `wrangler.jsonc` (assets ahora; containers/R2 comentados)
 
@@ -298,6 +326,7 @@ curl -s -X POST "$WM/clean" -H 'Content-Type: application/json' \
 - [ ] Tests de paridad: clonar upstream en CI, **no** venderlo; fallar si el hash de fuentes se desvía (patrón `scripts/upstream-sources.json` de unmark-web)
 - [ ] UI dropzone: inspect → mostrar hallazgos → clean → descarga `*.cleaned.*`
 - [ ] Copy de honestidad (tabla de este PLAN) visible junto a la dropzone, no en un footnote
+- [ ] Banner visible: investigación / experimental; datos pueden guardarse; enlace a DISCLAIMER
 - [ ] Re-inspect post-clean para Capa A / metadatos (prueba verificable)
 - [ ] i18n ES+EN
 - [ ] `npm run dev` sirve la UI; `/api/*` sigue en 501
@@ -318,7 +347,7 @@ curl -s -X POST "$WM/clean" -H 'Content-Type: application/json' \
 
 - [ ] R2 + stream; no buffer de 256 MiB
 - [ ] Capa B no-Claude; UI «mejor esfuerzo»
-- [ ] TTL de objetos R2; no retención
+- [ ] R2 operativo; documentar que objetos y logs **pueden** retenerse (sin vender TTL como privacidad)
 
 ### Nunca en el alcance inicial / Never in initial scope
 
@@ -338,7 +367,7 @@ curl -s -X POST "$WM/clean" -H 'Content-Type: application/json' \
    - helpers mínimos de `common.py` (`classify_finding_confidence`, `_contains_any`) — unmark-web usa *slices* de hash para no seguir todo el archivo
 3. **No portar:** `server.py`, rewrite/Layer B, MarkLLM, CtrlRegen, PDF/DOCX.
 4. **Paridad:** mismos bytes de salida en fixtures de PNG/JPEG/texto con ZWSP. Si no hay `node`+checkout, skip (no pass silencioso).
-5. **UI:** dropzone primero; explicación debajo (unmark-web v0.6.1 aprendió que el texto arriba empuja la herramienta fuera de la primera pantalla).
+5. **UI:** dropzone primero; explicación, datos y descargo debajo (unmark-web v0.6.1: el texto arriba empuja la herramienta fuera de la primera pantalla). Investigación / experimental, «datos pueden guardarse» y enlace a `docs/DISCLAIMER.md` tienen que verse, no quedar en un footnote.
 6. **Despacho de formatos (MVP):**
    - text/* pegado, `.txt` → Capa A local
    - imagen raster + AV listados → meta local

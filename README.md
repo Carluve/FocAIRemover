@@ -1,12 +1,14 @@
 # FocAIRemover
 
-Cloudflare drag-and-drop app that returns files cleaned of **verifiable** AI provenance marks: invisible Unicode (**Layer A**) and C2PA / EXIF / XMP metadata.
+**Proyecto de investigación / experimental. No es un producto comercial ni un servicio garantizado.**
 
-Aplicación web en Cloudflare, arrastrar-y-soltar, que devuelve ficheros sin marcas de procedencia de IA **verificables**: Unicode invisible (**Capa A**) y metadatos C2PA / EXIF / XMP.
+Investigación sobre marcas de procedencia de IA (Unicode invisible, C2PA/EXIF/XMP) con UI arrastrar-y-soltar en Cloudflare. **No** hay certificado de resultado. **Los datos pueden guardarse** (ver más abajo). El autor **no se hace responsable de nada**: [docs/DISCLAIMER.md](docs/DISCLAIMER.md).
 
-**Status: planning / scaffold.** Architecture is in [docs/PLAN.md](docs/PLAN.md). Browser cleaning is not wired yet. Server-side PDF/DOCX lands in **v1** (Workers + Containers).
+This is a **research / experimental** project, **not** a commercial product or a guaranteed service. **Data may be stored.** The author **accepts no responsibility whatsoever.** Full disclaimer (Spanish, binding): [docs/DISCLAIMER.md](docs/DISCLAIMER.md).
 
-**Estado: planificación / andamiaje.** La arquitectura está en [docs/PLAN.md](docs/PLAN.md). El motor en el navegador aún no está conectado. PDF/DOCX de servidor llega en **v1**.
+**Estado: planificación / andamiaje.** Arquitectura: [docs/PLAN.md](docs/PLAN.md). El motor de limpieza aún no está conectado. PDF/DOCX de servidor = **v1**.
+
+**Status: planning / scaffold.** Browser cleaning is not wired yet. Server-side PDF/DOCX lands in **v1**.
 
 ## Honesty constraints / Restricciones de honestidad
 
@@ -16,18 +18,36 @@ Aplicación web en Cloudflare, arrastrar-y-soltar, que devuelve ficheros sin mar
 - Las **marcas estadísticas de texto** (Claude / Anthropic, Kirchenbauer, SynthID-Text) **solo se debilitan** con reescritura pesada (**Capa B**): **mejor esfuerzo**, **no certificable**, hasta que Anthropic publique un detector público.
 - **Never** claim **“Anthropic watermark guaranteed removed”**.
 - **Nunca** afirmar **«marca de agua de Anthropic garantizada como eliminada»**.
-- Use on content you **own or are authorized to process**. Not academic fraud, not “human-written” theater. See [docs/ETHICS.md](docs/ETHICS.md) and [docs/TOS.md](docs/TOS.md).
-- Solo contenido que **posees o estás autorizado a procesar**. No fraude académico. Ver [docs/ETHICS.md](docs/ETHICS.md) y [docs/TOS.md](docs/TOS.md).
+- Use on content you **own or are authorized to process**. Not academic fraud, not “human-written” theater. See [docs/ETHICS.md](docs/ETHICS.md), [docs/TOS.md](docs/TOS.md), [docs/DISCLAIMER.md](docs/DISCLAIMER.md).
+- Solo contenido que **posees o estás autorizado a procesar**. No fraude académico. Ver [docs/ETHICS.md](docs/ETHICS.md), [docs/TOS.md](docs/TOS.md), [docs/DISCLAIMER.md](docs/DISCLAIMER.md).
 
 Design is based on the highest-starred upstream **[guillaumemeyer/watermarks-remover](https://github.com/guillaumemeyer/watermarks-remover)** (~20k★, MIT, v0.7.0). UI inspiration: **[ivanusto/unmark-web](https://github.com/ivanusto/unmark-web)** (browser-first, **not affiliated**). This repo does **not** vendor the upstream Python tree.
 
 El diseño se basa en el upstream con más estrellas. Inspiración de UI: unmark-web (**no afiliado**). Este repo **no** incluye el árbol Python de upstream.
 
+## Datos: pueden guardarse / Data may be stored
+
+**No asumas procesamiento 100 % local ni borrado al instante**, salvo los **bytes del fichero en el MVP del navegador** (no hay upload al cleaner; sí puede haber logs de CDN/Worker: IP, URL, User-Agent).
+
+| Fase | ¿El fichero sale de tu máquina? | Qué puede persistirse |
+| --- | --- | --- |
+| **MVP (navegador)** | No (bytes del archivo se quedan en la pestaña) | Logs de petición al servir la página; analítica de Cloudflare/Workers si está activa |
+| **v1 (Worker + contenedor)** | **Sí** — subes a `/api` | Uploads, salidas, informes, logs, IP y metadatos de uso, **copias para investigación**. Sin promesa de TTL ni de borrado |
+| **v1.5 (R2 + Capa B)** | **Sí** | Objetos en R2, reescrituras enviadas a un modelo, logs. Igual: pueden guardarse para investigación / operación |
+
+Detalle: [docs/PLAN.md](docs/PLAN.md#datos-por-fase--data-by-phase) · descargo: [docs/DISCLAIMER.md](docs/DISCLAIMER.md).
+
+## Descargo / Disclaimer
+
+El autor y el proyecto **no se hacen responsables de nada**: ni del limpieado, ni de si un watermark sigue detectable, ni de tu uso, ni de daños, pérdidas, sanciones académicas o legales, ni de fallos del servicio. Software **«tal cual» / AS IS**, sin garantías. Texto completo: [docs/DISCLAIMER.md](docs/DISCLAIMER.md).
+
+The author and the project **accept no responsibility whatsoever** for cleaning results, leftover-detectable watermarks, your use, damages, losses, academic or legal sanctions, or outages. **AS IS**, no warranties. Binding text: [docs/DISCLAIMER.md](docs/DISCLAIMER.md).
+
 ## How it will work / Cómo funcionará
 
 | Phase | What | Host |
 | --- | --- | --- |
-| **MVP** | Drag-drop; Layer A + image/AV metadata in the **browser**; no upload | Workers Static Assets |
+| **MVP** | Drag-drop; Layer A + image/AV metadata in the **browser**; file bytes not uploaded (page request logs may still exist) | Workers Static Assets |
 | **v1** | PDF / DOCX / full `/clean` | Worker proxy → Cloudflare Container (`ghcr.io/guillaumemeyer/watermarks-remover` on port **8765**) |
 | **v1.5** | Large files; Layer B rewrite | R2 + non-Claude OpenAI-compatible API / Workers AI |
 | **Out of scope** | Pixel SynthID / CtrlRegen (GPU); official Anthropic detector | — |
@@ -39,6 +59,7 @@ apps/web/              static UI (drag-drop stub)
 apps/worker/           Worker proxy stub (501 on /api until v1)
 containers/cleaner/    Dockerfile FROM ghcr.io/guillaumemeyer/watermarks-remover:latest
 docs/PLAN.md           architecture (ES+EN)
+docs/DISCLAIMER.md     research + data + liability (binding)
 docs/ETHICS.md         intended use
 docs/TOS.md            draft terms
 NOTICE                 MIT attribution for derived work

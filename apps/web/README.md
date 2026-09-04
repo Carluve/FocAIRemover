@@ -10,14 +10,16 @@ Patrón como [unmark-web](https://github.com/ivanusto/unmark-web) (inspiración 
 - Arrastrar/soltar + pegar texto.
 - **Capa A** (Unicode invisible) y strip de metadatos de imagen/AV **en el cliente**.
 - Informe honesto: verificable vs. no certificable.
-- Sin subidas en el MVP. Sin analytics. Sin CORS hacia el cleaner.
+- Banner visible: investigación / experimental; datos pueden guardarse; descargo (`docs/DISCLAIMER.md`).
+- Sin subidas de fichero en el MVP. Sin analytics de terceros. Sin CORS hacia el cleaner. Los logs de Cloudflare/Workers al servir la página **sí pueden** existir.
 
 Pattern like [unmark-web](https://github.com/ivanusto/unmark-web) (UI inspiration, **not affiliated**):
 
 - Drag-and-drop + paste.
 - **Layer A** (invisible Unicode) and image/AV metadata strip **in the browser**.
 - Honest report: verifiable vs. not certifiable.
-- No uploads in MVP. No analytics. No CORS to the cleaner.
+- Visible research + data-may-be-stored + disclaimer banner.
+- No file uploads in MVP. No third-party analytics. No CORS to the cleaner. Request logs **may** still exist.
 
 ## Qué no va aquí / What does not
 

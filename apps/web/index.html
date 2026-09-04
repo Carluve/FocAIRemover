@@ -70,16 +70,42 @@
   </head>
   <body>
     <main>
-      <p class="status">planning / scaffold · MVP not implemented</p>
+      <p class="status">investigación / experimental · no es un producto</p>
       <h1>FocAIRemover</h1>
       <p>
-        App web en Cloudflare para quitar marcas de procedencia de IA de
-        <strong>contenido que tú posees</strong>.
+        Proyecto de investigación sobre marcas de procedencia de IA.
+        <strong>No</strong> es un producto comercial ni un servicio garantizado.
+        Solo <strong>contenido que tú posees o estás autorizado a procesar</strong>.
       </p>
       <p>
-        Cloudflare-hosted cleaner for AI provenance marks on
-        <strong>content you own</strong>.
+        <strong>Research / experimental</strong> — not a commercial product or a
+        guaranteed service. Content you own only.
       </p>
+
+      <div class="caveat">
+        <p><strong>Datos / Data</strong></p>
+        <ul>
+          <li>
+            MVP en el navegador: los <em>bytes del fichero</em> se quedan en la
+            pestaña (no hay upload al cleaner). Los logs de la página (IP, URL,
+            User-Agent) <strong>pueden guardarse</strong>.
+          </li>
+          <li>
+            v1 y posteriores: el fichero <strong>sale de tu máquina</strong>.
+            Uploads, copias, informes y metadatos de uso <strong>pueden
+            persistirse</strong> con fines de investigación u operación. No hay
+            promesa de borrado al instante.
+          </li>
+        </ul>
+        <p><strong>Descargo / Disclaimer</strong></p>
+        <p>
+          El autor y el proyecto <strong>no se hacen responsables de nada</strong>:
+          ni del limpieado, ni de si un watermark sigue detectable, ni de tu uso,
+          ni de daños, pérdidas, sanciones académicas o legales, ni de fallos del
+          servicio. Software «tal cual» / AS IS, sin garantías.
+          Texto: <code>docs/DISCLAIMER.md</code>.
+        </p>
+      </div>
 
       <div class="drop" role="note">
         Zona de arrastrar y soltar — stub.<br />
@@ -105,8 +131,9 @@
       <p>
         Plan de arquitectura / architecture plan:
         <code>docs/PLAN.md</code>
-        · ética / ethics: <code>docs/ETHICS.md</code>
-        (this repository).
+        · ética: <code>docs/ETHICS.md</code>
+        · descargo: <code>docs/DISCLAIMER.md</code>
+        (este repositorio).
       </p>
     </main>
     <footer>
