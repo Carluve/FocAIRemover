@@ -41,10 +41,17 @@
         </p>
       </div>
 
+      <p id="health-line" class="health">Comprobando API…</p>
       <form id="upload-form">
         <label id="drop" class="drop">
-          <input id="file" type="file" name="file" hidden />
-          <span id="drop-label">Arrastra un fichero o haz clic para elegir</span>
+          <input
+            id="file"
+            type="file"
+            name="file"
+            hidden
+            accept=".txt,.md,.html,.htm,.pdf,.png,.jpg,.jpeg,.webp,.svg,.docx,.xlsx,.pptx"
+          />
+          <span id="drop-label">Arrastra un fichero o haz clic para elegir (máx. 32 MiB)</span>
         </label>
         <button type="submit" id="submit" disabled>Subir y limpiar</button>
       </form>

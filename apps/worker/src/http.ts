@@ -1,3 +1,5 @@
+import { timingSafeEqual } from "node:crypto";
+
 export type JsonBody = Record<string, unknown>;
 
 export function json(body: unknown, status: number, extra: HeadersInit = {}): Response {
@@ -56,12 +58,20 @@ export function clientIp(request: Request): string {
   return request.headers.get("cf-connecting-ip") || "local";
 }
 
+export function timingSafeEqualString(left: string, right: string): boolean {
+  const enc = new TextEncoder();
+  const a = enc.encode(left);
+  const b = enc.encode(right);
+  if (a.byteLength !== b.byteLength) return false;
+  return timingSafeEqual(a, b);
+}
+
 export function requireBearer(request: Request, apiKey: string | undefined): Response | null {
   const expected = apiKey?.trim();
   if (!expected) return null;
   const header = request.headers.get("authorization") || "";
   const match = /^Bearer\s+(.+)$/i.exec(header);
-  if (!match || match[1] !== expected) {
+  if (!match || !timingSafeEqualString(match[1] ?? "", expected)) {
     return json({ ok: false, error: "unauthorized", message: "missing or invalid bearer token" }, 401);
   }
   return null;

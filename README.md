@@ -78,7 +78,7 @@ npx wrangler dev                # http://127.0.0.1:8787
 npm test
 ```
 
-Production (enterprise only): `npm run deploy`. That script sets `CLOUDFLARE_ACCOUNT_ID=39f8ea10b94ad38470fc3c20c260efdc` and refuses the personal account. Secrets: `npx wrangler secret put API_KEY`. Full steps: [docs/DEPLOY.md](docs/DEPLOY.md).
+Production (enterprise only): see the exact checklist in [docs/DEPLOY.md](docs/DEPLOY.md) — enable R2 if needed (error **10042** means you are on the personal account), create `focairemover-files` if missing, optional secrets, `npm run deploy`. That script sets `CLOUDFLARE_ACCOUNT_ID=39f8ea10b94ad38470fc3c20c260efdc` and refuses the personal account.
 
 ## Attribution / Atribución
 

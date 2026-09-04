@@ -9,6 +9,8 @@
   "account_id": "39f8ea10b94ad38470fc3c20c260efdc",
   "compatibility_date": "2026-09-04",
   "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "preview_urls": true,
   "observability": {
     "enabled": true,
     "head_sampling_rate": 1,
@@ -19,12 +21,13 @@
     "run_worker_first": true,
   },
   "vars": {
-    "ENVIRONMENT": "development",
+    "ENVIRONMENT": "production",
     // Public origin allowlist for CORS. Same-origin (this Worker) is always allowed.
-    // Never "*".
+    // Never "*". Override locally in .dev.vars if needed.
     "ALLOWED_ORIGIN": "https://focairemover.carluve.workers.dev",
     "MAX_UPLOAD_BYTES": "33554432",
-    "CLEANER_TIMEOUT_MS": "55000",
+    // Must stay under the 30s ctx.waitUntil() budget after POST /api/upload returns.
+    "CLEANER_TIMEOUT_MS": "20000",
   },
   "r2_buckets": [
     {

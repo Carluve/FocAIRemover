@@ -7,9 +7,12 @@ const jobEl = document.getElementById("job");
 const jobStatus = document.getElementById("job-status");
 const jobJson = document.getElementById("job-json");
 const jobActions = document.getElementById("job-actions");
+const healthEl = document.getElementById("health-line");
 
 let selected = null;
 let pollTimer = null;
+
+refreshHealth();
 
 drop.addEventListener("dragover", (e) => {
   e.preventDefault();
@@ -31,6 +34,20 @@ function setFile(file) {
   selected = file;
   dropLabel.textContent = `${file.name} (${file.size} bytes)`;
   submit.disabled = false;
+}
+
+async function refreshHealth() {
+  if (!healthEl) return;
+  try {
+    const res = await fetch("/api/health");
+    const data = await res.json();
+    const cleaner = data.cleaner === "up" ? "cleaner: up" : "cleaner: down";
+    healthEl.textContent = `${cleaner} · R2 ${data.r2 || "focairemover-files"} · enterprise`;
+    healthEl.className = data.cleaner === "up" ? "health ok" : "health warn";
+  } catch {
+    healthEl.textContent = "API no disponible / API unavailable";
+    healthEl.className = "health warn";
+  }
 }
 
 form.addEventListener("submit", async (e) => {
@@ -61,24 +78,63 @@ form.addEventListener("submit", async (e) => {
 async function poll(id) {
   clearInterval(pollTimer);
   const tick = async () => {
-    const res = await fetch(`/api/jobs/${id}`);
-    const data = await res.json();
-    renderJob(data);
-    if (data.status === "done") {
-      clearInterval(pollTimer);
-      setStatus("Listo. Descarga el fichero limpio. El original y la salida quedan en R2.");
-      jobActions.innerHTML = `<a href="/api/jobs/${id}/download">Descargar / Download</a>`;
-      submit.disabled = false;
-    } else if (data.status === "error") {
-      clearInterval(pollTimer);
-      setStatus(data.error || "error", true);
-      submit.disabled = false;
-    } else {
-      setStatus(`Estado: ${data.status}. El cleaner corre en el servidor (no en el navegador).`);
+    try {
+      const res = await fetch(`/api/jobs/${id}`);
+      const data = await res.json();
+      renderJob(data);
+      if (data.status === "done") {
+        clearInterval(pollTimer);
+        setStatus("Listo. Descarga el fichero limpio. El original y la salida quedan en R2.");
+        jobActions.innerHTML = `<a href="/api/jobs/${id}/download">Descargar / Download</a>`;
+        submit.disabled = false;
+      } else if (data.status === "error") {
+        clearInterval(pollTimer);
+        setStatus(data.error || "error", true);
+        renderRetry(id);
+        submit.disabled = false;
+      } else {
+        setStatus(`Estado: ${data.status}. El cleaner corre en el servidor (no en el navegador).`);
+      }
+    } catch (err) {
+      setStatus(`No se pudo leer el job: ${err}`, true);
     }
   };
   await tick();
   pollTimer = setInterval(tick, 1500);
+}
+
+function renderRetry(id) {
+  jobActions.innerHTML = "";
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.id = "retry";
+  btn.textContent = "Reintentar limpieza / Retry clean";
+  btn.addEventListener("click", () => retry(id));
+  jobActions.appendChild(btn);
+}
+
+async function retry(id) {
+  const btn = document.getElementById("retry");
+  if (btn) btn.disabled = true;
+  setStatus("Reintentando… / Retrying…");
+  try {
+    const res = await fetch("/api/jobs", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ jobId: id }),
+    });
+    const data = await res.json();
+    renderJob(data);
+    if (!res.ok) {
+      setStatus(data.message || data.error || "retry failed", true);
+      renderRetry(id);
+      return;
+    }
+    poll(id);
+  } catch (err) {
+    setStatus(String(err), true);
+    renderRetry(id);
+  }
 }
 
 function renderJob(data) {

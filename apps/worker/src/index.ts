@@ -214,10 +214,9 @@ async function startJob(request: Request, env: Env, ctx: ExecutionContext): Prom
   const row = await getJob(env.JOBS, jobId);
   if (!row) return clientError("not_found", "job not found", 404);
   if (row.status === "done") return json(publicJob(row), 200);
-  if (row.status === "processing") return json(publicJob(row), 202);
 
   ctx.waitUntil(kickOff(env, jobId));
-  return json({ ...publicJob(row), status: "queued" }, 202);
+  return json({ ...publicJob(row), status: row.status === "processing" ? "processing" : "queued" }, 202);
 }
 
 async function kickOff(env: Env, jobId: string): Promise<void> {

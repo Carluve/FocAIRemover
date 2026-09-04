@@ -79,3 +79,7 @@ pre {
 a { color: var(--accent); }
 footer { margin-top: 2.5rem; font-size: 0.85rem; color: var(--muted); }
 .error { color: var(--danger); }
+.health { font-size: 0.9rem; color: var(--muted); margin: 0 0 1rem; }
+.health.warn { color: var(--warn); }
+.health.ok { color: var(--accent); }
+#job-actions button { margin-top: 0.5rem; }

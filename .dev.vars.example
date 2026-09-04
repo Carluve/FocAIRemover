@@ -1,6 +1,8 @@
 # Local secrets for `wrangler dev`. Copy to `.dev.vars` (gitignored).
 # Never commit real keys.
 
+ENVIRONMENT=development
+
 # Optional: require Authorization: Bearer <this> on /api (except /api/health).
 # API_KEY=
 

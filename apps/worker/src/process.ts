@@ -9,7 +9,7 @@ function sleep(ms: number): Promise<void> {
 
 function parseTimeout(raw: string | undefined): number {
   const n = Number(raw);
-  return Number.isFinite(n) && n > 0 ? n : 55_000;
+  return Number.isFinite(n) && n > 0 ? n : 20_000;
 }
 
 export async function processJob(env: Env, jobId: string): Promise<void> {

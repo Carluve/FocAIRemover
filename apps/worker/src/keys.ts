@@ -3,8 +3,11 @@
  */
 
 export const DEFAULT_MAX_UPLOAD_BYTES = 32 * 1024 * 1024;
-export const DEFAULT_CLEANER_TIMEOUT_MS = 55_000;
-export const CLEANER_MAX_ATTEMPTS = 3;
+/** Must fit in the 30s ctx.waitUntil() window after the 202 response. */
+export const DEFAULT_CLEANER_TIMEOUT_MS = 20_000;
+export const CLEANER_MAX_ATTEMPTS = 1;
+/** Reclaim jobs stuck in `processing` if waitUntil was cancelled. */
+export const STALE_PROCESSING_MS = 45_000;
 export const JOB_ID_RE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

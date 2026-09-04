@@ -1,4 +1,4 @@
-import type { JobRow, JobStatus } from "./keys";
+import { STALE_PROCESSING_MS, type JobRow, type JobStatus } from "./keys";
 
 export async function insertJob(
   db: D1Database,
@@ -42,13 +42,18 @@ export async function getJobByIdempotency(db: D1Database, key: string): Promise<
 
 export async function claimJob(db: D1Database, id: string): Promise<boolean> {
   const now = Date.now();
+  const staleBefore = now - STALE_PROCESSING_MS;
   const result = await db
     .prepare(
       `UPDATE jobs
        SET status = 'processing', updated_at = ?, attempts = attempts + 1
-       WHERE id = ? AND status IN ('queued', 'error')`,
+       WHERE id = ?
+         AND (
+           status IN ('queued', 'error')
+           OR (status = 'processing' AND updated_at < ?)
+         )`,
     )
-    .bind(now, id)
+    .bind(now, id, staleBefore)
     .run();
   return (result.meta.changes ?? 0) > 0;
 }
