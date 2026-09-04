@@ -79,6 +79,26 @@ npm test
 npm run typecheck
 ```
 
+## Tests
+
+`npm test` runs the suite inside **workerd** via `@cloudflare/vitest-plugin`, with
+the real R2, D1 and rate-limit bindings from `wrangler.jsonc` — not mocks of them.
+It covers the whole job pipeline: upload → R2 → D1 → cleaner → cleaned object →
+download, plus the auth modes, per-caller idempotency scoping, CORS, the queue
+producer, and the queue consumer's ack/retry decisions.
+
+For the deployed shape (real HTTP, real multipart, static assets) there is an
+end-to-end script. `scripts/fake-cleaner.mjs` is a **fixture, not a cleaner** —
+it only strips invisible Unicode, so never read its output as a real result.
+
+```bash
+npm run migrate:local
+npm run fake-cleaner &                        # or: docker compose up --build -d
+echo 'CLEANER_URL=http://127.0.0.1:8765' > .dev.vars
+npx wrangler dev &
+npm run e2e
+```
+
 Uploads are capped at **8 MiB** (`MAX_UPLOAD_BYTES`) — see [docs/DEPLOY.md](docs/DEPLOY.md#limits). Before deploying, pick an access mode: the default serves `/api` **publicly**, see [docs/DEPLOY.md](docs/DEPLOY.md#4-access-control--decide-before-you-deploy).
 
 Production (enterprise only): see the exact checklist in [docs/DEPLOY.md](docs/DEPLOY.md) — enable R2 if needed (error **10042** means you are on the personal account), create `focairemover-files` if missing, optional secrets, `npm run deploy`. That script sets `CLOUDFLARE_ACCOUNT_ID=39f8ea10b94ad38470fc3c20c260efdc` and refuses the personal account.

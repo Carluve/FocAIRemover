@@ -109,9 +109,18 @@ npm install
 npx wrangler d1 migrations apply focairemover-jobs --local
 docker compose up --build -d    # optional, 127.0.0.1:8765
 npx wrangler dev
-npm test
+npm test          # workerd + real R2/D1 bindings
 npm run typecheck
 node scripts/smoke.mjs
+```
+
+Full end-to-end over HTTP (see the Tests section in [../README.md](../README.md)):
+
+```bash
+npm run fake-cleaner &   # fixture only — strips invisible Unicode, nothing else
+echo 'CLEANER_URL=http://127.0.0.1:8765' > .dev.vars
+npx wrangler dev &
+npm run e2e
 ```
 
 ## Limits

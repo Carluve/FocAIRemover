@@ -62,7 +62,7 @@ export default {
    * Durable job processing. Queues owns retries and the dead-letter path, so a
    * job survives isolate eviction — unlike the ctx.waitUntil() fallback below.
    */
-  async queue(batch: MessageBatch<CleanMessage>, env: Env): Promise<void> {
+  async queue(batch: MessageBatch<CleanMessage>, env: Env, _ctx: ExecutionContext): Promise<void> {
     for (const message of batch.messages) {
       const jobId = message.body?.jobId;
       if (!jobId || !JOB_ID_RE.test(jobId)) {

@@ -67,7 +67,7 @@ export async function processJob(env: Env, jobId: string): Promise<JobOutcome> {
   }
 
   const lastError = sanitizeError(result.error);
-  const retry = isRetryable(result.status, result.error);
+  const retry = !result.permanent && isRetryable(result.status, result.error);
   await finishJob(env.JOBS, jobId, { status: retry ? "queued" : "error", error: lastError });
   logEvent({ msg: retry ? "job_retry" : "job_error", jobId, error: lastError });
   return retry ? "retry" : "error";

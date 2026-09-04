@@ -21,7 +21,12 @@ export type CleanerResult =
       status: number;
       error: string;
       detail?: unknown;
+      /** Set when retrying can never help, e.g. no cleaner is configured. */
+      permanent?: boolean;
     };
+
+/** No CLEANER binding and no CLEANER_URL. Retrying will never fix this. */
+class CleanerNotConfiguredError extends Error {}
 
 function uint8ToBase64(bytes: Uint8Array): string {
   const buf = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
@@ -63,6 +68,10 @@ export async function callCleaner(
     res = await dispatchCleaner(env, "/clean", init);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    if (err instanceof CleanerNotConfiguredError) {
+      // Fail fast rather than burning every queue retry on a config mistake.
+      return { ok: false, status: 501, error: `cleaner_not_configured: ${message}`, permanent: true };
+    }
     return { ok: false, status: 503, error: `cleaner_unreachable: ${message}` };
   }
 
@@ -127,7 +136,7 @@ async function dispatchCleaner(env: Env, path: string, init: RequestInit): Promi
     return fetch(`${base}${path.startsWith("/") ? path : `/${path}`}`, init);
   }
 
-  throw new Error(
+  throw new CleanerNotConfiguredError(
     "no cleaner configured (set CLEANER_URL or enable the CLEANER container binding)",
   );
 }

@@ -6,11 +6,17 @@
     "lib": ["ES2022"],
     "strict": true,
     "noEmit": true,
-    // Tests run through `node --experimental-strip-types`, which requires the
-    // explicit .ts extension on relative imports.
+    // Tests import source modules by their explicit .ts path.
     "allowImportingTsExtensions": true,
     "skipLibCheck": true,
-    "types": ["node"]
+    // @cloudflare/vitest-plugin/types declares the `cloudflare:test` module.
+    "types": ["node", "@cloudflare/vitest-plugin/types"]
   },
-  "include": ["apps/worker/src/**/*.ts", "worker-configuration.d.ts", "env.d.ts", "tests/**/*.ts"]
+  "include": [
+    "apps/worker/src/**/*.ts",
+    "worker-configuration.d.ts",
+    "env.d.ts",
+    "tests/**/*.ts",
+    "vitest.config.ts"
+  ]
 }
