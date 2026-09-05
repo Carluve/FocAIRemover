@@ -20,6 +20,7 @@ import {
   requireBearer,
   withCors,
 } from "./http";
+import webAppJs from "./static/app.js.txt";
 import { claimJob, getJob, getJobByIdempotency, insertJob, publicJob } from "./jobs";
 import { JOB_ID_RE, r2CleanedKey, r2MetaKey, r2OriginalKey, r2ReportKey } from "./keys";
 import { processJob } from "./process";
@@ -40,6 +41,17 @@ export default {
     if (url.pathname === "/api" || url.pathname.startsWith("/api/")) {
       const response = await handleApi(request, env, ctx, url);
       return withCors(response, origin);
+    }
+
+    // Serve UI JS from this Worker version so API deploys (no Wrangler
+    // token) cannot leave a stale apps/web/app.js asset in front.
+    if (url.pathname === "/app.js") {
+      return new Response(webAppJs, {
+        headers: {
+          "content-type": "application/javascript; charset=utf-8",
+          "cache-control": "no-cache",
+        },
+      });
     }
 
     return env.ASSETS.fetch(request);
