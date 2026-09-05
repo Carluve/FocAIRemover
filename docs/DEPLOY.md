@@ -39,7 +39,7 @@ npx wrangler secret put WATERMARKS_SERVER_API_KEY   # Worker → cleaner
 npx wrangler secret put CLEANER_URL                 # only if cleaner is not a Container
 ```
 
-No secrets are required for a first deploy. **Worker Layer A** cleans `.txt` / `.md` / `.html` / `.svg` without a remote cleaner. PDF / Office / raster / AV jobs end in `error` (`cleaner_unconfigured`) until you set `CLEANER_URL` or enable Containers. That is intentional.
+No secrets are required for a first deploy. The **Worker** cleans `.txt` / `.md` / `.html` / `.svg` (Layer A) and Word `.docx` (Layer A over every XML part plus `docProps` metadata stripping) without a remote cleaner. PDF / raster / AV and the other Office formats end in `error` (`cleaner_unconfigured`) until you set `CLEANER_URL` or enable Containers. That is intentional.
 
 `CLEANER_URL=http://127.0.0.1:8765` is for **local** `wrangler dev` only. Production rejects loopback — the Worker cannot reach your laptop. Use a public HTTPS origin or a Container.
 

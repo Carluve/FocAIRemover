@@ -5,7 +5,8 @@ const ALLOWED = new Set([
   "pdf", "docx", "xlsx", "pptx", "odt", "ods", "odp", "epub",
   "mp4", "mov", "m4a", "m4v", "wav", "mp3", "flac",
 ]);
-const TEXT_EXT = new Set(["txt", "md", "markdown", "html", "htm", "svg"]);
+// Cleaned in the Worker itself — no CLEANER_URL, no Container.
+const WORKER_EXT = new Set(["txt", "md", "markdown", "html", "htm", "svg", "docx"]);
 
 const fileInput = document.getElementById("file");
 const drop = document.getElementById("drop");
@@ -77,6 +78,13 @@ function showFormError(msg) {
 
 function setFile(file) {
   const ext = extensionOf(file.name);
+  if (ext === "doc" || ext === "docm") {
+    // "Word" usually means .docx; say what to do instead of just rejecting.
+    showFormError(
+      `El formato .${ext} no está soportado. En Word: Archivo → Guardar como → Documento de Word (.docx).`,
+    );
+    return;
+  }
   if (!ext || !ALLOWED.has(ext)) {
     showFormError(`Extensión .${ext || "?"} no permitida.`);
     return;
@@ -89,9 +97,9 @@ function setFile(file) {
     showFormError(`Supera el límite de 32 MiB (${formatSize(file.size)}).`);
     return;
   }
-  if (!TEXT_EXT.has(ext) && health.canClean?.containers === false) {
+  if (!WORKER_EXT.has(ext) && health.canClean?.containers === false) {
     showFormError(
-      "Este formato necesita el cleaner remoto (CLEANER_URL o Container). Capa A sí limpia .txt / .md / .html / .svg.",
+      "Este formato necesita el cleaner remoto (CLEANER_URL o Container). Sin él se limpian .txt / .md / .html / .svg y Word .docx.",
     );
   } else {
     showFormError("");
@@ -134,7 +142,7 @@ async function refreshHealth() {
       healthEl.className = "health ok";
     } else if (textOk) {
       healthEl.textContent =
-        "Capa A lista · cleaner de PDF/imagen: no configurado (un paso: CLEANER_URL o Container)";
+        "Capa A y Word (.docx) listos · cleaner de PDF/imagen: no configurado (un paso: CLEANER_URL o Container)";
       healthEl.className = "health warn";
     } else {
       healthEl.textContent = "API alcanzada, cleaner no disponible";
@@ -241,7 +249,10 @@ async function poll(id) {
 function friendlyError(error) {
   const raw = error || "error";
   if (/cleaner_unconfigured/i.test(raw)) {
-    return "Este formato necesita CLEANER_URL o un Container. Prueba un .txt / .md, o activa el cleaner remoto.";
+    return "Este formato necesita CLEANER_URL o un Container. Prueba un .txt / .md o un Word .docx, o activa el cleaner remoto.";
+  }
+  if (/not_docx/i.test(raw)) {
+    return "No es un .docx válido. El Word antiguo (.doc) no está soportado: guárdalo como .docx.";
   }
   if (/cleaner_unreachable/i.test(raw)) {
     return "El cleaner remoto no responde. Reintenta o revisa CLEANER_URL.";

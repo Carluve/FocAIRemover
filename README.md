@@ -15,7 +15,8 @@
 | Capa | Qué | ¿Verificable? | Estado |
 | --- | --- | --- | --- |
 | **Capa A** | Unicode invisible (ZWSP, BOM, bidi overrides, …) en `.txt` `.md` `.html` `.svg` | Sí — se re-inspecciona | **Lista** (Worker, sin contenedor) |
-| **Metadatos** | C2PA / EXIF / XMP / props de PDF, Office, imagen, AV | Sí a nivel de contenedor | Requiere **CLEANER_URL** o Cloudflare Container |
+| **Word `.docx`** | Capa A en todas las partes XML + strip de `docProps` (autor, aplicación, empresa, fechas, props IA) y de manifiestos C2PA embebidos | Sí — descomprime el `.docx` y compara | **Lista** (Worker, sin contenedor) |
+| **Metadatos** | C2PA / EXIF / XMP / props de PDF, imagen, AV | Sí a nivel de contenedor | Requiere **CLEANER_URL** o Cloudflare Container |
 | **Capa B** | Reescritura para debilitar marcas estadísticas (Claude/Anthropic, Kirchenbauer, SynthID-Text) | **No** — mejor esfuerzo | **No expuesta** |
 
 **Nunca** «Anthropic watermark guaranteed removed». Un informe limpio no significa «nunca hubo IA» ni «indetectable».
