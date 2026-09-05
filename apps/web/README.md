@@ -1,7 +1,8 @@
-# `apps/web` — drag-and-drop (R2 MVP)
+# `apps/web` — UI estática
 
-Static assets. The UI **uploads** to `POST /api/upload`, polls `GET /api/jobs/:id`, retries via `POST /api/jobs`, and downloads via `GET /api/jobs/:id/download`. A health line shows whether the cleaner is up.
+Single-page vanilla (HTML/CSS/JS). Spanish-first, dark Cloudflare-adjacent theme.
 
-Files **leave the browser** and **may be kept in R2**. Disclaimer stays visible. Never claim Anthropic watermarks are guaranteed removed.
+Flujo: dropzone → `POST /api/upload` → poll `GET /api/jobs/:id` → descarga / informe.
+Reintento: `POST /api/jobs`. Salud: `GET /api/health` (`layerA` vs `cleaner`).
 
-Local: `npm install && npm run migrate:local && npm run dev`.
+Los ficheros **salen del navegador** y **pueden quedarse en R2**. El aviso legal es colapsable pero obligatorio. Nunca afirmar que se eliminó una marca de Anthropic.

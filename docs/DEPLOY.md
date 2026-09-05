@@ -39,7 +39,9 @@ npx wrangler secret put WATERMARKS_SERVER_API_KEY   # Worker → cleaner
 npx wrangler secret put CLEANER_URL                 # only if cleaner is not a Container
 ```
 
-No secrets are required for a first deploy. Without `CLEANER_URL` / Containers, uploads still go to R2; jobs end in `error` (`cleaner_unreachable`). That is intentional.
+No secrets are required for a first deploy. **Worker Layer A** cleans `.txt` / `.md` / `.html` / `.svg` without a remote cleaner. PDF / Office / raster / AV jobs end in `error` (`cleaner_unconfigured`) until you set `CLEANER_URL` or enable Containers. That is intentional.
+
+`CLEANER_URL=http://127.0.0.1:8765` is for **local** `wrangler dev` only. Production rejects loopback — the Worker cannot reach your laptop. Use a public HTTPS origin or a Container.
 
 ## 5. Deploy the Worker
 
@@ -49,22 +51,39 @@ npm install
 npm run deploy
 ```
 
-`npm run deploy` refuses the personal account. Check `GET https://focairemover.<subdomain>.workers.dev/api/health` — `account` must be `39f8ea10b94ad38470fc3c20c260efdc` and `r2` must be `focairemover-files`.
+`npm run deploy` refuses the personal account. Check `GET https://focairemover.carluve.workers.dev/api/health`:
+
+- `account` = `39f8ea10b94ad38470fc3c20c260efdc`
+- `r2` = `focairemover-files`
+- `layerA` = `up`
+- `cleaner` = `up` | `unconfigured` | `down` | `invalid_loopback` (remote only; text still works when `layerA` is up)
 
 Same-origin UI is served from the Worker. CORS is never `*`.
 
-## 6. Containers (cleaner) — later
+If Wrangler is not logged in, deploy the same way as the last production push: Cloudflare API upload of the Wrangler bundle + static assets (see the `focairemover` Worker on the enterprise account; `last_deployed_from: api`).
 
-Leave the `containers` block in `wrangler.jsonc` **commented** until Docker is on the deploy machine.
+Same-origin UI is served from the Worker. CORS is never `*`.
 
-Then:
+## 6. Remote cleaner — one enable step
+
+**A. `CLEANER_URL` (no Docker on the Worker host)**
+
+Run watermarks-remover somewhere the Worker can fetch (`docker compose` + tunnel, Fly, a VM):
+
+```bash
+npx wrangler secret put CLEANER_URL
+```
+
+Value: origin only, e.g. `https://cleaner.example.com` (paths `/health` and `/clean`).
+
+**B. Cloudflare Containers** — leave the `containers` block in `wrangler.jsonc` **commented** until Docker is on the deploy machine. Then:
 
 1. `npm i @cloudflare/containers`
 2. Uncomment `containers` / `durable_objects` / `migrations` in `wrangler.jsonc`
-3. `export { CleanerContainer } from "./container"` in `apps/worker/src/index.ts`
+3. Implement + `export { CleanerContainer }` as in `apps/worker/src/container.ts`
 4. `npm run deploy` (Wrangler builds `containers/cleaner/Dockerfile` and pushes to this enterprise account)
 
-Until then: `CLEANER_URL` must be reachable from the Worker (not `127.0.0.1` of your laptop).
+Until A or B: text Layer A still works; container formats return `cleaner_unconfigured`.
 
 ## Local
 

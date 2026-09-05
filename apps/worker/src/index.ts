@@ -21,7 +21,7 @@ import {
   withCors,
 } from "./http";
 import { claimJob, getJob, getJobByIdempotency, insertJob, publicJob } from "./jobs";
-import { JOB_ID_RE, r2CleanedKey, r2MetaKey, r2OriginalKey } from "./keys";
+import { JOB_ID_RE, r2CleanedKey, r2MetaKey, r2OriginalKey, r2ReportKey } from "./keys";
 import { processJob } from "./process";
 import { ValidationError, assertAllowedFile, parseMaxBytes, sanitizeDownloadName } from "./validate";
 
@@ -74,11 +74,14 @@ async function handleApi(
       return await rateLimited(request, env, () => startJob(request, env, ctx));
     }
 
-    const jobMatch = /^\/api\/jobs\/([^/]+)(?:\/(download))?$/.exec(url.pathname);
+    const jobMatch = /^\/api\/jobs\/([^/]+)(?:\/(download|report))?$/.exec(url.pathname);
     if (jobMatch) {
       const jobId = decodeURIComponent(jobMatch[1] ?? "");
       if (jobMatch[2] === "download" && request.method === "GET") {
         return await download(env, jobId);
+      }
+      if (jobMatch[2] === "report" && request.method === "GET") {
+        return await jobReport(env, jobId);
       }
       if (request.method === "GET") {
         return await jobStatus(env, jobId);
@@ -111,14 +114,24 @@ async function rateLimited(
 }
 
 async function health(env: Env): Promise<Response> {
-  const cleaner = await cleanerHealth(env);
+  const remote = await cleanerHealth(env);
+  const containersReady = remote.status === "up";
   return json({
     ok: true,
     service: "focairemover",
     account: "39f8ea10b94ad38470fc3c20c260efdc",
     r2: "focairemover-files",
-    cleaner: cleaner.ok ? "up" : "down",
-    cleanerDetail: cleaner.detail,
+    layerA: "up",
+    cleaner: remote.status,
+    remoteCleaner: remote.status,
+    canClean: {
+      text: true,
+      containers: containersReady,
+    },
+    enableStep: containersReady
+      ? undefined
+      : "Remote cleaner: set secret CLEANER_URL to a reachable watermarks-remover, or uncomment containers in wrangler.jsonc and `npm run deploy` with Docker.",
+    cleanerDetail: remote.detail,
     disclaimer:
       "Research/experimental. Files in R2 may be kept. No guaranteed watermark removal. AS IS.",
   });
@@ -260,4 +273,35 @@ async function download(env: Env, jobId: string): Promise<Response> {
   headers.set("cache-control", "private, no-store");
   headers.set("x-content-type-options", "nosniff");
   return new Response(object.body, { status: 200, headers });
+}
+
+async function jobReport(env: Env, jobId: string): Promise<Response> {
+  if (!JOB_ID_RE.test(jobId)) {
+    return clientError("invalid_job_id", "job id must be a UUID");
+  }
+  const row = await getJob(env.JOBS, jobId);
+  if (!row) return clientError("not_found", "job not found", 404);
+  if (row.status !== "done") {
+    return json(
+      { ok: false, error: "not_ready", message: `job status is ${row.status}`, status: row.status },
+      409,
+    );
+  }
+  const object = await env.FOCAI_FILES.get(r2ReportKey(jobId));
+  if (!object) {
+    return json({ ok: true, report: row.report_summary ? safeJson(row.report_summary) : null });
+  }
+  const headers = new Headers();
+  headers.set("content-type", "application/json; charset=utf-8");
+  headers.set("cache-control", "private, no-store");
+  headers.set("x-content-type-options", "nosniff");
+  return new Response(object.body, { status: 200, headers });
+}
+
+function safeJson(raw: string): unknown {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return raw;
+  }
 }

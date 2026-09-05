@@ -5,10 +5,10 @@
 
 **Nature:** research / experimental — **not** a commercial product or a guaranteed service. Binding disclaimer: [DISCLAIMER.md](DISCLAIMER.md).
 
-Estado / Status: **MVP R2-backed implementado** en la cuenta **enterprise** `39f8ea10b94ad38470fc3c20c260efdc` (bucket `focairemover-files`). Deploy: [DEPLOY.md](DEPLOY.md).
-This is an **R2-backed MVP**. Do not use the personal Cloudflare account.
+Estado / Status: **MVP R2-backed + Capa A en Worker** en la cuenta **enterprise** `39f8ea10b94ad38470fc3c20c260efdc` (bucket `focairemover-files`). Mapa corto para implementadores: [ARCHITECTURE.md](ARCHITECTURE.md). Deploy: [DEPLOY.md](DEPLOY.md).
+This is an **R2-backed MVP** with in-Worker Layer A for text. Do not use the personal Cloudflare account.
 
-El siguiente trabajo es activar Containers en producción y, si se desea, Capa B.
+El siguiente trabajo de infra es activar el cleaner remoto (CLEANER_URL o Containers) para PDF/imagen. Capa B sigue siendo opcional y no certificable.
 
 Fuentes comprobadas el **2026-09-04**:
 Sources checked **2026-09-04**:

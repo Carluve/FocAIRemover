@@ -6,71 +6,146 @@
     <title>FocAIRemover — investigación</title>
     <meta
       name="description"
-      content="Proyecto de investigación. Limpieza verificable de Unicode invisible y metadatos C2PA/EXIF/XMP. Los ficheros se guardan en R2. No garantiza la eliminación de marcas de Anthropic."
+      content="Investigación: limpia Unicode invisible (Capa A) y, con cleaner remoto, metadatos C2PA/EXIF/XMP. Los ficheros se guardan en R2. No garantiza la eliminación de marcas de Anthropic."
     />
+    <meta name="theme-color" content="#0b1118" />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="./app.css" />
   </head>
   <body>
-    <main>
-      <p class="status">investigación / experimental · R2-backed · no es un producto</p>
-      <h1>FocAIRemover</h1>
-      <p>
-        Sube un fichero. Se guarda en R2 (original + resultado). El Worker llama a
-        watermarks-remover <code>/clean</code>. <strong>No</strong> es un servicio
-        garantizado.
-      </p>
-      <p class="en">
-        Research / experimental. Every file is stored in R2. No guaranteed watermark
-        removal. AS IS, no liability.
-      </p>
-
-      <div class="caveat">
-        <p><strong>Datos</strong></p>
-        <p>
-          Originales, salidas e informes <strong>pueden persistirse</strong> en el
-          bucket R2 <code>focairemover-files</code> (cuenta Cloudflare enterprise)
-          con fines de investigación u operación. No hay promesa de borrado.
-        </p>
-        <p><strong>Descargo</strong></p>
-        <p>
-          El autor <strong>no se hace responsable de nada</strong>: limpiado,
-          watermarks que sigan detectables, tu uso, daños, pérdidas, sanciones
-          académicas o legales, fallos. Software «tal cual» / AS IS.
-          <code>docs/DISCLAIMER.md</code>.
-          <strong>Nunca «Anthropic watermark guaranteed removed».</strong>
-        </p>
+    <a class="skip-link visually-hidden" href="#content">Saltar al contenido</a>
+    <header class="top">
+      <div class="brand">
+        <img src="./favicon.svg" width="28" height="28" alt="" />
+        <span>FocAIRemover</span>
       </div>
+      <p class="badges" aria-label="Estado del proyecto">
+        <span class="badge">Investigación</span>
+        <span class="badge">Capa A</span>
+        <span class="badge muted">No es un producto</span>
+      </p>
+    </header>
 
-      <p id="health-line" class="health">Comprobando API…</p>
-      <form id="upload-form">
-        <label id="drop" class="drop">
+    <main id="content" tabindex="-1">
+      <section class="hero">
+        <h1>Quita marcas invisibles de tus ficheros</h1>
+        <p class="lede">
+          Capa A verificable (Unicode oculto) en el Worker. Metadatos de PDF/imagen
+          cuando el cleaner remoto está activo.
+        </p>
+        <p class="en">
+          Research / experimental. Every upload is stored in R2. No guaranteed
+          Anthropic watermark removal.
+        </p>
+        <p id="health-line" class="health" aria-live="polite">Comprobando API…</p>
+      </section>
+
+      <form id="upload-form" class="panel drop-panel">
+        <label id="drop" class="drop" for="file">
           <input
             id="file"
             type="file"
             name="file"
-            hidden
-            accept=".txt,.md,.html,.htm,.pdf,.png,.jpg,.jpeg,.webp,.svg,.docx,.xlsx,.pptx"
+            accept=".txt,.md,.markdown,.html,.htm,.svg,.pdf,.png,.jpg,.jpeg,.webp,.avif,.heic,.gif,.bmp,.tif,.tiff,.docx,.xlsx,.pptx,.odt,.ods,.odp,.epub,.mp4,.mov,.m4a,.m4v,.wav,.mp3,.flac"
           />
-          <span id="drop-label">Arrastra un fichero o haz clic para elegir (máx. 32 MiB)</span>
+          <span class="drop-icon" aria-hidden="true"></span>
+          <span id="drop-title" class="drop-title">Arrastra un fichero aquí</span>
+          <span id="drop-hint" class="drop-hint">o haz clic para elegir · máx. 32&nbsp;MiB</span>
         </label>
-        <button type="submit" id="submit" disabled>Subir y limpiar</button>
+
+        <div id="file-chip" class="chip" hidden>
+          <span id="chip-name" class="chip-name"></span>
+          <span id="chip-size" class="chip-size"></span>
+          <button type="button" id="chip-clear" class="chip-clear">Quitar</button>
+        </div>
+
+        <p id="form-error" class="form-error" role="alert" hidden></p>
+
+        <div class="actions">
+          <button type="submit" id="submit" disabled>Subir y limpiar</button>
+          <p class="fine">
+            El original y la salida <strong>pueden quedarse</strong> en R2
+            <code>focairemover-files</code>.
+          </p>
+        </div>
       </form>
 
-      <section id="job" hidden>
-        <h2>Trabajo</h2>
-        <p id="job-status"></p>
-        <pre id="job-json"></pre>
-        <p id="job-actions"></p>
+      <section id="job" class="panel job-panel" hidden>
+        <h2 class="visually-hidden">Progreso del trabajo</h2>
+        <ol class="steps" id="steps" role="list">
+          <li data-step="uploaded">Subido</li>
+          <li data-step="cleaning">Limpiando</li>
+          <li data-step="ready">Listo</li>
+        </ol>
+        <p id="job-status" class="job-status" aria-live="polite"></p>
+        <div id="job-actions" class="job-actions"></div>
+        <details id="job-raw" class="raw">
+          <summary>Detalle técnico</summary>
+          <pre id="job-json"></pre>
+        </details>
       </section>
 
-      <div class="caveat">
-        <p><strong>Lo verificable</strong> — Capa A (Unicode invisible) y strip de metadatos C2PA/EXIF/XMP.</p>
-        <p><strong>No certificable</strong> — marcas estadísticas de texto (Claude/Anthropic, Kirchenbauer, SynthID-Text). Solo se debilitan con Capa B (mejor esfuerzo).</p>
-      </div>
+      <section class="legal-wrap">
+        <button
+          type="button"
+          id="legal-toggle"
+          class="legal-toggle"
+          aria-expanded="false"
+          aria-controls="legal-panel"
+        >
+          Aviso legal / investigación
+        </button>
+        <div id="legal-panel" class="legal-panel" hidden>
+          <p>
+            <strong>Investigación, no producto.</strong> Sin SLA, sin certificado de
+            resultado. Software «tal cual» / AS IS.
+          </p>
+          <p>
+            <strong>Datos.</strong> Cada upload va a R2 (original, cleaned,
+            <code>report.json</code>) y D1. No hay promesa de TTL ni de borrado.
+          </p>
+          <p>
+            <strong>Lo verificable.</strong> Capa A (Unicode invisible) y, si el
+            cleaner remoto está activo, strip de metadatos C2PA/EXIF/XMP.
+          </p>
+          <p>
+            <strong>No certificable.</strong> Marcas estadísticas de texto
+            (Claude/Anthropic, Kirchenbauer, SynthID-Text). Capa B = mejor esfuerzo,
+            no expuesta aquí.
+            <strong>Nunca «Anthropic watermark guaranteed removed».</strong>
+          </p>
+          <p>
+            <strong>Descargo.</strong> El autor no se hace responsable de nada:
+            limpieado, marcas que sigan detectables, tu uso, daños, sanciones o
+            fallos. Texto vinculante:
+            <a href="https://github.com/Carluve/FocAIRemover/blob/main/docs/DISCLAIMER.md"
+              >DISCLAIMER</a
+            >
+            ·
+            <a href="https://github.com/Carluve/FocAIRemover/blob/main/docs/ETHICS.md"
+              >ética</a
+            >
+            ·
+            <a href="https://github.com/Carluve/FocAIRemover/blob/main/docs/TOS.md">TOS</a>.
+          </p>
+          <p class="en">
+            Binding disclaimer in Spanish. Data may be stored. No liability. AS IS.
+          </p>
+        </div>
+      </section>
     </main>
+
     <footer>
-      Derivado de watermarks-remover (MIT). No afiliado a Anthropic ni a unmark-web.
-      <script type="module" src="./app.js"></script>
+      <p>
+        Derivado de
+        <a href="https://github.com/guillaumemeyer/watermarks-remover">watermarks-remover</a>
+        (MIT). No afiliado a Anthropic ni a unmark-web.
+      </p>
+      <p>
+        <a href="https://github.com/Carluve/FocAIRemover">GitHub</a>
+        · cuenta enterprise Cloudflare
+      </p>
     </footer>
+    <script type="module" src="./app.js"></script>
   </body>
 </html>

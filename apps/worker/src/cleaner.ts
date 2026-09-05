@@ -1,10 +1,11 @@
 /**
- * Cleaner HTTP client.
+ * Remote cleaner HTTP client (Containers or CLEANER_URL).
  *
  * Preferred: Cloudflare Container binding (CLEANER Durable Object) talking to
  * watermarks-remover on port 8765. Enable CleanerContainer export + wrangler
  * containers block (see docs/DEPLOY.md).
- * Fallback: CLEANER_URL (docker compose / local `server.py`).
+ * Fallback: CLEANER_URL (must be reachable from the Worker — not laptop
+ * localhost in production).
  */
 
 import { Buffer } from "node:buffer";
@@ -23,6 +24,15 @@ export type CleanerResult =
       detail?: unknown;
     };
 
+export type RemoteCleanerStatus = "up" | "down" | "unconfigured" | "invalid_loopback";
+
+export type RemoteHealth = {
+  ok: boolean;
+  status: RemoteCleanerStatus;
+  configured: boolean;
+  detail: unknown;
+};
+
 function uint8ToBase64(bytes: Uint8Array): string {
   const buf = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
   return Buffer.from(buf).toString("base64");
@@ -30,6 +40,38 @@ function uint8ToBase64(bytes: Uint8Array): string {
 
 function base64ToUint8(b64: string): Uint8Array {
   return new Uint8Array(Buffer.from(b64, "base64"));
+}
+
+export function isLoopbackHostname(hostname: string): boolean {
+  const host = hostname.toLowerCase();
+  return host === "127.0.0.1" || host === "localhost" || host === "::1" || host === "[::1]";
+}
+
+export function resolveCleanerUrl(env: Env): { url: string | null; reason?: string } {
+  const raw = env.CLEANER_URL?.trim();
+  if (!raw) return { url: null };
+
+  let parsed: URL;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    return { url: null, reason: "invalid_cleaner_url" };
+  }
+
+  if (isLoopbackHostname(parsed.hostname) && env.ENVIRONMENT === "production") {
+    return { url: null, reason: "loopback_unreachable_in_production" };
+  }
+
+  return { url: raw.replace(/\/$/, "") };
+}
+
+export function hasContainerBinding(env: Env): boolean {
+  return Boolean(env.CLEANER);
+}
+
+export function hasRemoteCleaner(env: Env): boolean {
+  if (hasContainerBinding(env)) return true;
+  return Boolean(resolveCleanerUrl(env).url);
 }
 
 export async function callCleaner(
@@ -99,16 +141,59 @@ export async function callCleaner(
   };
 }
 
-export async function cleanerHealth(env: Env, timeoutMs = 5000): Promise<{ ok: boolean; detail: unknown }> {
+export async function cleanerHealth(env: Env, timeoutMs = 5000): Promise<RemoteHealth> {
+  if (!hasContainerBinding(env)) {
+    const resolved = resolveCleanerUrl(env);
+    if (resolved.reason === "loopback_unreachable_in_production") {
+      return {
+        ok: false,
+        status: "invalid_loopback",
+        configured: true,
+        detail: {
+          error: "CLEANER_URL points at localhost; the Worker cannot reach your laptop",
+        },
+      };
+    }
+    if (resolved.reason === "invalid_cleaner_url") {
+      return {
+        ok: false,
+        status: "down",
+        configured: true,
+        detail: { error: "CLEANER_URL is not a valid URL" },
+      };
+    }
+    if (!resolved.url) {
+      return {
+        ok: false,
+        status: "unconfigured",
+        configured: false,
+        detail: {
+          error: "no remote cleaner (set CLEANER_URL or enable the CLEANER container binding)",
+          layerA: "Worker Layer A still cleans .txt/.md/.html/.svg without a remote cleaner",
+        },
+      };
+    }
+  }
+
   try {
     const res = await dispatchCleaner(env, "/health", {
       method: "GET",
       signal: AbortSignal.timeout(timeoutMs),
     });
     const detail = await res.json().catch(() => ({ status: res.status }));
-    return { ok: res.ok, detail };
+    return {
+      ok: res.ok,
+      status: res.ok ? "up" : "down",
+      configured: true,
+      detail,
+    };
   } catch (err) {
-    return { ok: false, detail: { error: err instanceof Error ? err.message : String(err) } };
+    return {
+      ok: false,
+      status: "down",
+      configured: true,
+      detail: { error: err instanceof Error ? err.message : String(err) },
+    };
   }
 }
 
@@ -122,9 +207,13 @@ async function dispatchCleaner(env: Env, path: string, init: RequestInit): Promi
     return stub.fetch(url, init);
   }
 
-  const base = env.CLEANER_URL?.replace(/\/$/, "");
-  if (base) {
-    return fetch(`${base}${path.startsWith("/") ? path : `/${path}`}`, init);
+  const resolved = resolveCleanerUrl(env);
+  if (resolved.url) {
+    return fetch(`${resolved.url}${path.startsWith("/") ? path : `/${path}`}`, init);
+  }
+
+  if (resolved.reason === "loopback_unreachable_in_production") {
+    throw new Error("CLEANER_URL is localhost; unreachable from production Workers");
   }
 
   throw new Error(
