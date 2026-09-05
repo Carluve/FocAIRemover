@@ -6,7 +6,9 @@
 
 **Live:** [focairemover.carluve.workers.dev](https://focairemover.carluve.workers.dev) · cuenta Cloudflare **enterprise** `39f8ea10b94ad38470fc3c20c260efdc` · R2 `focairemover-files`
 
-![UI](docs/images/ui-desktop.png)
+![UI de FocAIRemover](docs/images/ui-desktop.png)
+
+<p align="center"><img src="docs/images/ui-mobile.png" alt="UI móvil" width="280" /></p>
 
 ## Qué hace / What it does
 
