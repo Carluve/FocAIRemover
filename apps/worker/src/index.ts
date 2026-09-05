@@ -119,7 +119,6 @@ async function health(env: Env): Promise<Response> {
   return json({
     ok: true,
     service: "focairemover",
-    account: "39f8ea10b94ad38470fc3c20c260efdc",
     r2: "focairemover-files",
     layerA: "up",
     cleaner: remote.status,

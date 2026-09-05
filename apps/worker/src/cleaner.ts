@@ -42,9 +42,32 @@ function base64ToUint8(b64: string): Uint8Array {
   return new Uint8Array(Buffer.from(b64, "base64"));
 }
 
+function isIpv4Loopback(ip: string): boolean {
+  const m = ip.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (!m) return false;
+  const oct = m.slice(1).map(Number);
+  if (oct.some((n) => n > 255)) return false;
+  return oct[0] === 127;
+}
+
+/** True for localhost, 127/8, ::1, and IPv4-mapped IPv6 loopback. */
 export function isLoopbackHostname(hostname: string): boolean {
-  const host = hostname.toLowerCase();
-  return host === "127.0.0.1" || host === "localhost" || host === "::1" || host === "[::1]";
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, "");
+  if (host === "localhost" || host === "localhost.") return true;
+  if (host === "::1" || host === "0:0:0:0:0:0:0:1") return true;
+  if (host === "::" || host === "0.0.0.0") return true;
+
+  const dottedMapped = host.match(/^(?:0:0:0:0:0:ffff:|::ffff:)((?:\d{1,3}\.){3}\d{1,3})$/);
+  if (dottedMapped) return isIpv4Loopback(dottedMapped[1]);
+
+  const hexMapped = host.match(/^(?:0:0:0:0:0:ffff:|::ffff:)([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
+  if (hexMapped) {
+    const hi = Number.parseInt(hexMapped[1], 16);
+    const lo = Number.parseInt(hexMapped[2], 16);
+    return isIpv4Loopback(`${(hi >> 8) & 255}.${hi & 255}.${(lo >> 8) & 255}.${lo & 255}`);
+  }
+
+  return isIpv4Loopback(host);
 }
 
 export function resolveCleanerUrl(env: Env): { url: string | null; reason?: string } {

@@ -208,20 +208,22 @@ async function poll(id) {
         report.textContent = "Informe JSON";
         jobActions.appendChild(report);
         submit.disabled = false;
-      } else if (data.status === "error") {
+        return;
+      }
+      if (data.status === "error") {
         clearInterval(pollTimer);
         setStep("ready", "error");
         setStatus(friendlyError(data.error), true);
         renderRetry(id);
         submit.disabled = false;
-      } else {
-        setStep("cleaning");
-        setStatus(
-          data.status === "processing"
-            ? "Limpiando en el Worker…"
-            : "En cola…",
-        );
+        return;
       }
+      setStep("cleaning");
+      setStatus(
+        data.status === "processing"
+          ? "Limpiando en el Worker…"
+          : "En cola…",
+      );
     } catch (err) {
       setStatus(`No se pudo leer el job: ${err}`, true);
     }

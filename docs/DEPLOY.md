@@ -53,16 +53,14 @@ npm run deploy
 
 `npm run deploy` refuses the personal account. Check `GET https://focairemover.carluve.workers.dev/api/health`:
 
-- `account` = `39f8ea10b94ad38470fc3c20c260efdc`
 - `r2` = `focairemover-files`
 - `layerA` = `up`
 - `cleaner` = `up` | `unconfigured` | `down` | `invalid_loopback` (remote only; text still works when `layerA` is up)
+- `canClean.text` = `true`; `canClean.containers` is `true` only when the remote cleaner is `up`
 
-Same-origin UI is served from the Worker. CORS is never `*`.
+Same-origin UI is served from the Worker. CORS is never `*`. The public health JSON does **not** include the account ID.
 
 If Wrangler is not logged in, deploy the same way as the last production push: Cloudflare API upload of the Wrangler bundle + static assets (see the `focairemover` Worker on the enterprise account; `last_deployed_from: api`).
-
-Same-origin UI is served from the Worker. CORS is never `*`.
 
 ## 6. Remote cleaner — one enable step
 
