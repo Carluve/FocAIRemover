@@ -7,6 +7,7 @@ ENVIRONMENT=development
 # API_KEY=
 
 # Local watermarks-remover HTTP service (docker compose).
+# Production must use a URL the Worker can reach — not 127.0.0.1.
 CLEANER_URL=http://127.0.0.1:8765
 
 # Optional bearer the Worker sends to the cleaner (WATERMARKS_SERVER_API_KEY).

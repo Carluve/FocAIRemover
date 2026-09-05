@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="FocAIRemover">
+  <rect width="32" height="32" rx="8" fill="#121a24"/>
+  <path d="M8 22V10h7.2c3.4 0 5.5 1.9 5.5 4.7 0 2.9-2.1 4.8-5.5 4.8H11.4V22H8zm3.4-5.3h3.5c1.6 0 2.5-.9 2.5-2.2s-.9-2.1-2.5-2.1h-3.5v4.3z" fill="#f6821f"/>
+  <circle cx="24.2" cy="9.2" r="2.1" fill="#f6821f"/>
+</svg>

@@ -2,7 +2,7 @@
   "name": "focairemover",
   "private": true,
   "version": "0.1.0",
-  "description": "Cloudflare-hosted AI provenance cleaner (R2-backed). Research/experimental. See docs/PLAN.md.",
+  "description": "Cloudflare-hosted AI provenance cleaner (R2-backed, Worker Layer A). Research/experimental. See docs/ARCHITECTURE.md.",
   "license": "MIT",
   "type": "module",
   "scripts": {

@@ -1,7 +1,9 @@
-import { callCleaner } from "./cleaner";
+import { callCleaner, hasRemoteCleaner } from "./cleaner";
+import { logEvent } from "./http";
 import { finishJob, getJob } from "./jobs";
 import { CLEANER_MAX_ATTEMPTS, r2CleanedKey, r2OriginalKey, r2ReportKey } from "./keys";
-import { logEvent } from "./http";
+import { cleanLayerA, decodeUtf8, encodeUtf8, isLayerATextExtension } from "./layerA";
+import { honestNote, summarizeReport } from "./reportSummary";
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -29,6 +31,22 @@ export async function processJob(env: Env, jobId: string): Promise<void> {
   }
 
   const bytes = new Uint8Array(await original.arrayBuffer());
+
+  if (isLayerATextExtension(job.extension)) {
+    await processLayerA(env, jobId, job.original_name, bytes);
+    return;
+  }
+
+  if (!hasRemoteCleaner(env)) {
+    await finishJob(env.JOBS, jobId, {
+      status: "error",
+      error:
+        "cleaner_unconfigured: PDF/imagen/Office need CLEANER_URL or Cloudflare Containers. Text (.txt/.md/.html/.svg) uses Worker Layer A without a remote cleaner.",
+    });
+    logEvent({ msg: "job_error", jobId, error: "cleaner_unconfigured" });
+    return;
+  }
+
   const timeoutMs = parseTimeout(env.CLEANER_TIMEOUT_MS);
   let lastError = "cleaner_failed";
 
@@ -46,27 +64,11 @@ export async function processJob(env: Env, jobId: string): Promise<void> {
       timeoutMs,
     });
     if (result.ok) {
-      await env.FOCAI_FILES.put(r2CleanedKey(jobId), result.cleaned, {
-        httpMetadata: {
-          contentType: job.content_type || "application/octet-stream",
-        },
-        customMetadata: {
-          jobId,
-          kind: result.kind,
-          originalName: job.original_name,
-        },
+      await storeCleaned(env, jobId, result.cleaned, job.content_type, job.original_name, {
+        kind: result.kind,
+        backend: "remote-cleaner",
+        report: result.report,
       });
-      const summary = summarizeReport(result.kind, result.report);
-      await env.FOCAI_FILES.put(r2ReportKey(jobId), JSON.stringify(result.report ?? {}), {
-        httpMetadata: { contentType: "application/json" },
-      });
-      await finishJob(env.JOBS, jobId, {
-        status: "done",
-        cleaned_size_bytes: result.cleaned.byteLength,
-        report_summary: JSON.stringify(summary),
-        error: null,
-      });
-      logEvent({ msg: "job_done", jobId, kind: result.kind, cleanedBytes: result.cleaned.byteLength });
       return;
     }
 
@@ -82,20 +84,77 @@ export async function processJob(env: Env, jobId: string): Promise<void> {
   logEvent({ msg: "job_error", jobId, error: lastError });
 }
 
-function summarizeReport(kind: string, report: unknown): Record<string, unknown> {
-  const out: Record<string, unknown> = {
-    kind,
-    note: "Layer A and metadata stripping are verifiable. Statistical text watermarks are not certified removed. Never: Anthropic watermark guaranteed removed.",
-  };
-  if (report && typeof report === "object") {
-    const r = report as Record<string, unknown>;
-    if ("actions" in r) out.actions = r.actions;
-    if ("suspicious" in r) out.suspicious = r.suspicious;
-    if ("layer_b" in r) out.layer_b = r.layer_b;
-    if ("still_has_c2pa" in r) out.still_has_c2pa = r.still_has_c2pa;
-    if ("still_has_ai_metadata" in r) out.still_has_ai_metadata = r.still_has_ai_metadata;
+async function processLayerA(
+  env: Env,
+  jobId: string,
+  originalName: string,
+  bytes: Uint8Array,
+): Promise<void> {
+  let text: string;
+  try {
+    text = decodeUtf8(bytes);
+  } catch {
+    await finishJob(env.JOBS, jobId, {
+      status: "error",
+      error: "invalid_utf8: Layer A expects UTF-8 text",
+    });
+    return;
   }
-  return out;
+
+  const result = cleanLayerA(text);
+  const cleaned = encodeUtf8(result.cleaned);
+  const report = {
+    kind: "text",
+    layer: "A",
+    backend: "worker-layer-a",
+    removedCount: result.removedCount,
+    removed: result.removed,
+    note: honestNote(),
+  };
+
+  await storeCleaned(env, jobId, cleaned, "text/plain; charset=utf-8", originalName, {
+    kind: "text",
+    backend: "worker-layer-a",
+    report,
+  });
+}
+
+async function storeCleaned(
+  env: Env,
+  jobId: string,
+  cleaned: Uint8Array,
+  contentType: string | null,
+  originalName: string,
+  meta: { kind: string; backend: string; report: unknown },
+): Promise<void> {
+  await env.FOCAI_FILES.put(r2CleanedKey(jobId), cleaned, {
+    httpMetadata: {
+      contentType: contentType || "application/octet-stream",
+    },
+    customMetadata: {
+      jobId,
+      kind: meta.kind,
+      backend: meta.backend,
+      originalName,
+    },
+  });
+  const summary = summarizeReport(meta.kind, meta.report);
+  await env.FOCAI_FILES.put(r2ReportKey(jobId), JSON.stringify(meta.report ?? {}), {
+    httpMetadata: { contentType: "application/json" },
+  });
+  await finishJob(env.JOBS, jobId, {
+    status: "done",
+    cleaned_size_bytes: cleaned.byteLength,
+    report_summary: JSON.stringify(summary),
+    error: null,
+  });
+  logEvent({
+    msg: "job_done",
+    jobId,
+    kind: meta.kind,
+    backend: meta.backend,
+    cleanedBytes: cleaned.byteLength,
+  });
 }
 
 function sanitizeError(raw: string): string {

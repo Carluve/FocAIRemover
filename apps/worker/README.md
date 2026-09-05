@@ -8,6 +8,6 @@ Worker on **carluve @enterprise** (`39f8ea10b94ad38470fc3c20c260efdc`).
 
 Every upload is stored at `uploads/{jobId}/original` before `/clean`. Cleaned bytes go to `uploads/{jobId}/cleaned`. Download streams from R2.
 
-Cleaner seam: `CLEANER_URL` (docker compose) or Cloudflare Containers (`CleanerContainer`, port 8765). See [docs/DEPLOY.md](../../docs/DEPLOY.md).
+Text (`.txt` / `.md` / `.html` / `.svg`) is cleaned in-process (Layer A). Other formats: `CLEANER_URL` or Cloudflare Containers (`CleanerContainer`, port 8765). See [docs/DEPLOY.md](../../docs/DEPLOY.md) and [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md).
 
 Do not add `Access-Control-Allow-Origin: *`.

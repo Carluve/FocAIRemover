@@ -1,93 +1,92 @@
 # FocAIRemover
 
-**Proyecto de investigación / experimental. No es un producto comercial ni un servicio garantizado.**
+**Investigación / experimental.** Limpia marcas de procedencia de IA que **sí se pueden verificar** (Unicode invisible, y metadatos C2PA/EXIF/XMP cuando hay cleaner remoto). No es un producto, no hay SLA, **no hay certificado de resultado**.
 
-Investigación sobre marcas de procedencia de IA (Unicode invisible, C2PA/EXIF/XMP) con UI arrastrar-y-soltar en Cloudflare. **No** hay certificado de resultado. **Los datos pueden guardarse** (ver más abajo). El autor **no se hace responsable de nada**: [docs/DISCLAIMER.md](docs/DISCLAIMER.md).
+**Research / experimental** — not a commercial product. **Data may be stored.** The author **accepts no responsibility whatsoever.** Binding text: [docs/DISCLAIMER.md](docs/DISCLAIMER.md).
 
-This is a **research / experimental** project, **not** a commercial product or a guaranteed service. **Data may be stored.** The author **accepts no responsibility whatsoever.** Full disclaimer (Spanish, binding): [docs/DISCLAIMER.md](docs/DISCLAIMER.md).
+**Live:** [focairemover.carluve.workers.dev](https://focairemover.carluve.workers.dev) · cuenta Cloudflare **enterprise** `39f8ea10b94ad38470fc3c20c260efdc` · R2 `focairemover-files`
 
-**Estado: MVP R2-backed (implementado).** Cuenta Cloudflare **enterprise** `39f8ea10b94ad38470fc3c20c260efdc`. Bucket R2 `focairemover-files`. Deploy: [docs/DEPLOY.md](docs/DEPLOY.md). Arquitectura: [docs/PLAN.md](docs/PLAN.md).
+![UI de FocAIRemover](docs/images/ui-desktop.png)
 
-**Status: R2-backed MVP.** Enterprise Cloudflare account only (not personal). Every uploaded file is stored in R2.
+<p align="center"><img src="docs/images/ui-mobile.png" alt="UI móvil" width="280" /></p>
 
-## Honesty constraints / Restricciones de honestidad
+## Qué hace / What it does
 
-- **Layer A** (invisible Unicode) and **file metadata stripping** are **verifiable**.
-- **Capa A** (Unicode invisible) y el **strip de metadatos** son **verificables**.
-- **Statistical text watermarks** (Claude / Anthropic token-sampling, Kirchenbauer, SynthID-Text) are **ONLY weakened** by heavy rewrite (**Layer B**) — **best-effort**, **NOT certifiable** until Anthropic ships a public detector.
-- Las **marcas estadísticas de texto** (Claude / Anthropic, Kirchenbauer, SynthID-Text) **solo se debilitan** con reescritura pesada (**Capa B**): **mejor esfuerzo**, **no certificable**, hasta que Anthropic publique un detector público.
-- **Never** claim **“Anthropic watermark guaranteed removed”**.
-- **Nunca** afirmar **«marca de agua de Anthropic garantizada como eliminada»**.
-- Use on content you **own or are authorized to process**. Not academic fraud, not “human-written” theater. See [docs/ETHICS.md](docs/ETHICS.md), [docs/TOS.md](docs/TOS.md), [docs/DISCLAIMER.md](docs/DISCLAIMER.md).
-- Solo contenido que **posees o estás autorizado a procesar**. No fraude académico. Ver [docs/ETHICS.md](docs/ETHICS.md), [docs/TOS.md](docs/TOS.md), [docs/DISCLAIMER.md](docs/DISCLAIMER.md).
+| Capa | Qué | ¿Verificable? | Estado |
+| --- | --- | --- | --- |
+| **Capa A** | Unicode invisible (ZWSP, BOM, bidi overrides, …) en `.txt` `.md` `.html` `.svg` | Sí — se re-inspecciona | **Lista** (Worker, sin contenedor) |
+| **Metadatos** | C2PA / EXIF / XMP / props de PDF, Office, imagen, AV | Sí a nivel de contenedor | Requiere **CLEANER_URL** o Cloudflare Container |
+| **Capa B** | Reescritura para debilitar marcas estadísticas (Claude/Anthropic, Kirchenbauer, SynthID-Text) | **No** — mejor esfuerzo | **No expuesta** |
 
-Design is based on the highest-starred upstream **[guillaumemeyer/watermarks-remover](https://github.com/guillaumemeyer/watermarks-remover)** (~20k★, MIT, v0.7.0). UI inspiration: **[ivanusto/unmark-web](https://github.com/ivanusto/unmark-web)** (browser-first, **not affiliated**). This repo does **not** vendor the upstream Python tree.
+**Nunca** «Anthropic watermark guaranteed removed». Un informe limpio no significa «nunca hubo IA» ni «indetectable».
 
-El diseño se basa en el upstream con más estrellas. Inspiración de UI: unmark-web (**no afiliado**). Este repo **no** incluye el árbol Python de upstream.
+Never claim **“Anthropic watermark guaranteed removed”**.
 
-## Datos: pueden guardarse / Data may be stored
+## Estado / Status
 
-**No asumas procesamiento local ni borrado al instante.** El camino principal sube **todos** los ficheros a R2.
+| Pieza | Producción |
+| --- | --- |
+| UI + Worker + R2 + D1 | Activo en workers.dev |
+| Upload → job → poll → download | Activo |
+| Capa A (texto) | Activo, sin secretos extra |
+| Cleaner remoto (`watermarks-remover` `/clean`) | **Un paso:** `wrangler secret put CLEANER_URL` *o* descomentar Containers (Docker) |
+| Capa B / GPU / detector Anthropic | Fuera de alcance |
 
-| Fase | ¿El fichero sale de tu máquina? | Qué puede persistirse |
-| --- | --- | --- |
-| **MVP actual (R2 + Worker)** | **Sí** — `POST /api/upload` | Original, cleaned, `report.json`, metadatos D1, logs, IP. Bucket `focairemover-files`. **Sin promesa de TTL ni de borrado** |
-| **Containers / CLEANER_URL** | Sí | Igual + lo que vea el proceso cleaner (tmp efímero no es garantía) |
-| **Capa B (opcional, más adelante)** | Sí | Texto enviado a un modelo de terceros, más copias R2 |
+Arquitectura: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · deploy: [docs/DEPLOY.md](docs/DEPLOY.md) · ética: [docs/ETHICS.md](docs/ETHICS.md) · TOS: [docs/TOS.md](docs/TOS.md)
 
-Detalle: [docs/PLAN.md](docs/PLAN.md#datos-por-fase--data-by-phase) · descargo: [docs/DISCLAIMER.md](docs/DISCLAIMER.md) · deploy: [docs/DEPLOY.md](docs/DEPLOY.md).
+## Arquitectura
 
-## Descargo / Disclaimer
-
-El autor y el proyecto **no se hacen responsables de nada**: ni del limpieado, ni de si un watermark sigue detectable, ni de tu uso, ni de daños, pérdidas, sanciones académicas o legales, ni de fallos del servicio. Software **«tal cual» / AS IS**, sin garantías. Texto completo: [docs/DISCLAIMER.md](docs/DISCLAIMER.md).
-
-The author and the project **accept no responsibility whatsoever** for cleaning results, leftover-detectable watermarks, your use, damages, losses, academic or legal sanctions, or outages. **AS IS**, no warranties. Binding text: [docs/DISCLAIMER.md](docs/DISCLAIMER.md).
-
-## How it will work / Cómo funcionará
-
-| Phase | What | Host |
-| --- | --- | --- |
-| **MVP (now)** | Drag-drop → R2 original → job → watermarks-remover `/clean` → R2 cleaned → download | Workers + R2 `focairemover-files` + D1 `focairemover-jobs` on **enterprise** |
-| **Containers** | Same `/clean` inside Cloudflare Containers (port 8765) | Uncomment wrangler containers; see DEPLOY.md |
-| **Later** | Layer B rewrite (non-Claude); larger files | Optional Workers AI / OpenAI-compatible |
-| **Out of scope** | Pixel SynthID / CtrlRegen (GPU); official Anthropic detector; guaranteed undetectability | — |
-
-## Repository layout / Estructura
-
-```
-apps/web/              drag-drop UI → /api/upload → poll → download
-apps/worker/           R2 + D1 job API
-containers/cleaner/    Dockerfile FROM ghcr.io/guillaumemeyer/watermarks-remover
-migrations/            D1 schema
-docs/DEPLOY.md         enterprise account + R2/D1
-docs/PLAN.md           architecture (ES+EN)
-docs/DISCLAIMER.md     research + data + liability (binding)
-wrangler.jsonc         account_id enterprise, FOCAI_FILES, JOBS, rate limit
+```mermaid
+flowchart LR
+  UI[apps/web] -->|POST /api/upload| W[Worker]
+  W -->|original| R2[(R2 focairemover-files)]
+  W --> D1[(D1 jobs)]
+  W -->|txt md html svg| A[Layer A in-Worker]
+  W -->|pdf office image| C[CLEANER_URL or Container :8765]
+  A --> R2
+  C --> R2
+  UI -->|GET download| W
 ```
 
-## How to run / Cómo ejecutar
+Diseño de limpieza, contrato HTTP (`/health`, `/inspect`, `/clean`) e imagen GHCR: **[guillaumemeyer/watermarks-remover](https://github.com/guillaumemeyer/watermarks-remover)** (~20k★, MIT, v0.7.0). Este repo **no** vende el árbol Python. Inspiración de UI: [ivanusto/unmark-web](https://github.com/ivanusto/unmark-web) (**no afiliado**).
 
-Cuenta enterprise only. See [docs/DEPLOY.md](docs/DEPLOY.md).
+## Datos: pueden guardarse
+
+**No asumas procesamiento local ni borrado al instante.** Todo upload va a R2 (`uploads/{jobId}/original`, `cleaned`, `report.json`) más la fila D1. Sin TTL prometido.
+
+## Quick start
+
+Cuenta **enterprise** only. Detalle: [docs/DEPLOY.md](docs/DEPLOY.md).
 
 ```bash
 cp .dev.vars.example .dev.vars
 npm install
 npx wrangler d1 migrations apply focairemover-jobs --local
-docker compose up --build -d    # optional cleaner
-npx wrangler dev                # http://127.0.0.1:8787
+# opcional: docker compose up --build -d
+npx wrangler dev          # http://127.0.0.1:8787
 npm test
 ```
 
-Production (enterprise only): see the exact checklist in [docs/DEPLOY.md](docs/DEPLOY.md) — enable R2 if needed (error **10042** means you are on the personal account), create `focairemover-files` if missing, optional secrets, `npm run deploy`. That script sets `CLOUDFLARE_ACCOUNT_ID=39f8ea10b94ad38470fc3c20c260efdc` and refuses the personal account.
+Producción:
 
-## Attribution / Atribución
+```bash
+export CLOUDFLARE_ACCOUNT_ID=39f8ea10b94ad38470fc3c20c260efdc
+npm run deploy
+# un paso para PDF/imagen:
+# npx wrangler secret put CLEANER_URL
+```
 
-MIT. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
+## Honestidad / Honesty
 
-Cleaning design, HTTP contract (`/health`, `/inspect`, `/clean`), and the GHCR image are **watermarks-remover**, © Guillaume Meyer and contributors, MIT. Preserve that notice in any port of their parsers.
+- Capa A y strip de metadatos son **verificables**.
+- Las marcas estadísticas de texto **solo se debilitan** con Capa B — **no certificable** hasta un detector público de Anthropic.
+- Solo contenido que **posees o estás autorizado a procesar**. No fraude académico. [ETHICS](docs/ETHICS.md).
+- El autor **no se hace responsable de nada**. AS IS. [DISCLAIMER](docs/DISCLAIMER.md).
 
-El diseño de limpieza, el contrato HTTP y la imagen GHCR son **watermarks-remover**. Conservar esa atribución en cualquier port de sus parsers.
+## Cómo contribuir
 
-unmark-web is an independent MIT client; FocAIRemover is not a fork and is not an official watermarks-remover component.
+[CONTRIBUTING.md](CONTRIBUTING.md) — cómo probar, cómo no mentir en el copy.
 
-unmark-web es un cliente MIT independiente; FocAIRemover no es un fork ni un componente oficial de watermarks-remover.
+## Licencia
+
+MIT. [LICENSE](LICENSE) · [NOTICE](NOTICE). Conservar atribución de watermarks-remover en cualquier port de sus parsers.

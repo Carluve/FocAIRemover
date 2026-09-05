@@ -2,8 +2,8 @@
 /**
  * Smoke against a running `npx wrangler dev` (default http://127.0.0.1:8787).
  * Requires D1 migrations applied locally (`npm run migrate:local`).
- * Cleaning will error until CLEANER_URL or Containers are up — upload+job
- * records in R2/D1 must still succeed.
+ * Text (.txt) is cleaned by Worker Layer A without CLEANER_URL.
+ * PDF/Office still error until CLEANER_URL or Containers are up.
  */
 const BASE = process.env.SMOKE_BASE || "http://127.0.0.1:8787";
 
