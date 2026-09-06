@@ -3,6 +3,7 @@ import { logEvent } from "./http";
 import { finishJob, getJob } from "./jobs";
 import { CLEANER_MAX_ATTEMPTS, r2CleanedKey, r2OriginalKey, r2ReportKey } from "./keys";
 import { cleanLayerA, decodeUtf8, encodeUtf8, isLayerATextExtension } from "./layerA";
+import { cleanDocx, DOCX_CONTENT_TYPE, DocxError, isWorkerOoxmlExtension } from "./ooxml";
 import { honestNote, summarizeReport } from "./reportSummary";
 
 function sleep(ms: number): Promise<void> {
@@ -37,11 +38,16 @@ export async function processJob(env: Env, jobId: string): Promise<void> {
     return;
   }
 
+  if (isWorkerOoxmlExtension(job.extension)) {
+    await processDocx(env, jobId, job.original_name, bytes);
+    return;
+  }
+
   if (!hasRemoteCleaner(env)) {
     await finishJob(env.JOBS, jobId, {
       status: "error",
       error:
-        "cleaner_unconfigured: PDF/imagen/Office need CLEANER_URL or Cloudflare Containers. Text (.txt/.md/.html/.svg) uses Worker Layer A without a remote cleaner.",
+        "cleaner_unconfigured: PDF/imagen/AV need CLEANER_URL or Cloudflare Containers. Text (.txt/.md/.html/.svg) and Word (.docx) are cleaned in the Worker without a remote cleaner.",
     });
     logEvent({ msg: "job_error", jobId, error: "cleaner_unconfigured" });
     return;
@@ -116,6 +122,36 @@ async function processLayerA(
     kind: "text",
     backend: "worker-layer-a",
     report,
+  });
+}
+
+/**
+ * Word in the Worker: Layer A over every XML part plus docProps metadata
+ * stripping. No container, so this path works on a bare deploy.
+ */
+async function processDocx(
+  env: Env,
+  jobId: string,
+  originalName: string,
+  bytes: Uint8Array,
+): Promise<void> {
+  let result: Awaited<ReturnType<typeof cleanDocx>>;
+  try {
+    result = await cleanDocx(bytes);
+  } catch (err) {
+    const error =
+      err instanceof DocxError
+        ? err.message
+        : `docx_failed: ${err instanceof Error ? err.message : String(err)}`;
+    await finishJob(env.JOBS, jobId, { status: "error", error: sanitizeError(error) });
+    logEvent({ msg: "job_error", jobId, error });
+    return;
+  }
+
+  await storeCleaned(env, jobId, result.cleaned, DOCX_CONTENT_TYPE, originalName, {
+    kind: "docx",
+    backend: "worker-ooxml",
+    report: { ...result.report, note: honestNote() },
   });
 }
 

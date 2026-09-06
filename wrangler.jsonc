@@ -62,8 +62,8 @@
     },
   ],
 
-  // Worker Layer A cleans .txt/.md/.html/.svg without this block.
-  // PDF / Office / raster / AV need a remote cleaner:
+  // The Worker cleans .txt/.md/.html/.svg and Word .docx without this block.
+  // PDF / raster / AV and the other Office formats need a remote cleaner:
   //   A) secret CLEANER_URL = public watermarks-remover base URL, or
   //   B) uncomment the block below (Docker required on the deploy machine).
   // Production rejects CLEANER_URL=http://127.0.0.1 — the Worker cannot

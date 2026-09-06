@@ -21,6 +21,7 @@ export function summarizeReport(kind: string, report: unknown): Record<string, u
     if ("removed" in r) out.removed = r.removed;
     if ("backend" in r) out.backend = r.backend;
     if ("layer" in r) out.layer = r.layer;
+    if ("parts_cleaned" in r) out.parts_cleaned = r.parts_cleaned;
   }
   return out;
 }

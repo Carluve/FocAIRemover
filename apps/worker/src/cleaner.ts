@@ -192,7 +192,8 @@ export async function cleanerHealth(env: Env, timeoutMs = 5000): Promise<RemoteH
         configured: false,
         detail: {
           error: "no remote cleaner (set CLEANER_URL or enable the CLEANER container binding)",
-          layerA: "Worker Layer A still cleans .txt/.md/.html/.svg without a remote cleaner",
+          layerA:
+            "The Worker still cleans .txt/.md/.html/.svg and Word .docx without a remote cleaner",
         },
       };
     }

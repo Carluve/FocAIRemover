@@ -137,6 +137,8 @@ async function health(env: Env): Promise<Response> {
     remoteCleaner: remote.status,
     canClean: {
       text: true,
+      // Word is cleaned in the Worker (OOXML is a ZIP of XML), no cleaner needed.
+      docx: true,
       containers: containersReady,
     },
     enableStep: containersReady
